@@ -1,0 +1,132 @@
+# ===========================
+# GitLab CI/CD for NestJS + Node 20 + PM2
+# ===========================
+image: node:20
+
+stages:
+  - build
+  - deploy_dev
+  - deploy_qa
+  # - deploy_prod
+
+# -----------------------------
+# Cache node_modules (optional, speeds up build)
+# -----------------------------
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - node_modules/
+
+# -----------------------------
+# Build Stage
+# -----------------------------
+build:
+  stage: build
+  script:
+    - npm ci
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+      - package.json
+      - package-lock.json
+
+
+# -----------------------------
+# Deploy to Development
+# -----------------------------
+deploy_dev:
+  stage: deploy_dev
+  timeout: 5m
+  before_script:
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+    - chmod 600 ~/.ssh/deploy_key
+    - ssh-keyscan -H 148.72.153.220 >> ~/.ssh/known_hosts
+  script:
+    # Create directory and remove old files
+    - ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no wass-technologies@148.72.153.220 "mkdir -p /home/dev-api && rm -rf /home/dev-api/dist/* /home/dev-api/node_modules/*"
+
+    # Upload dist and package files
+    - scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -r dist/ package.json package-lock.json wass-technologies@148.72.153.220:/home/dev-api/
+
+    # Upload environment file
+    - scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no .env.dev wass-technologies@148.72.153.220:/home/dev-api/.env
+
+    # Fix permissions (skip logs directory)
+    - ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no wass-technologies@148.72.153.220 "find /home/dev-api -type f -not -path '*/logs/*' -exec chmod 644 {} \; && find /home/dev-api -type d -not -path '*/logs' -exec chmod 755 {} \; || true"
+
+    # Debug environment variables
+    - ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no wass-technologies@148.72.153.220 "
+      cd /home/dev-api &&
+      echo 'Environment file contents:' &&
+      cat .env &&
+      echo 'Testing env vars:' &&
+      source .env && echo \$WIZNOVY_DB_HOST \$WIZNOVY_USER_NAME \$WIZNOVY_DB_NAME
+      "
+
+    # Install dependencies and start PM2
+    - ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no wass-technologies@148.72.153.220 "
+      cd /home/dev-api &&
+      npm ci &&
+      pm2 delete dev-api || true &&
+      pm2 start dist/main.js --name dev-api &&
+      sleep 3 &&
+      pm2 status
+      "
+
+
+# -----------------------------
+# Deploy to QA
+# -----------------------------
+deploy_qa:
+  stage: deploy_qa
+  timeout: 5m
+  before_script:
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+    - chmod 600 ~/.ssh/deploy_key
+    - ssh-keyscan -H 148.72.153.220 >> ~/.ssh/known_hosts
+  script:
+    - ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no wass-technologies@148.72.153.220 "mkdir -p /home/qa-api && rm -rf /home/qa-api/dist/* /home/qa-api/node_modules/*"
+    - scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -r dist/ package.json package-lock.json wass-technologies@148.72.153.220:/home/qa-api/
+    - scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no .env.qa wass-technologies@148.72.153.220:/home/qa-api/.env
+    - ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no wass-technologies@148.72.153.220 "find /home/qa-api -type f -not -path '*/logs/*' -exec chmod 644 {} \; && find /home/qa-api -type d -not -path '*/logs' -exec chmod 755 {} \; || true"
+    - ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no wass-technologies@148.72.153.220 "
+      cd /home/qa-api &&
+      npm ci &&
+      pm2 delete qa-api || true &&
+      pm2 start dist/main.js --name qa-api &&
+      sleep 3 &&
+      pm2 status
+      "
+
+# -----------------------------
+# Deploy to Production (Optional)
+# -----------------------------
+# deploy_prod:
+#   stage: deploy_prod
+#   before_script:
+#     - mkdir -p ~/.ssh
+#     - echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+#     - chmod 600 ~/.ssh/deploy_key
+#     - ssh-keyscan -H <PROD_IP> >> ~/.ssh/known_hosts
+#   script:
+#     - ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no user@<PROD_IP> "rm -rf /home/prod-api/dist/* /home/prod-api/node_modules/*"
+#     - rsync -avz --delete --partial --ignore-errors --chmod=ugo=rwX \
+#         -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+#         dist/ package.json package-lock.json \
+#         user@<PROD_IP>:/home/prod-api/
+#     - rsync -avz --ignore-errors \
+#         -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+#         .env.prod \
+#         user@<PROD_IP>:/home/prod-api/.env
+#     - ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no user@<PROD_IP> "
+#         cd /home/prod-api &&
+#         npm ci --omit=dev &&
+#         pm2 delete prod-api || true &&
+#         pm2 start dist/main.js --name prod-api
+#       "
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == "main"'
+#       when: manual
