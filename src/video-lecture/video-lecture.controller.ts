@@ -40,8 +40,8 @@ export class VideoLectureController {
   }
 
   @Post('admin')
-  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
   @UseInterceptors(
     FileFieldsInterceptor(
       [{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }, { name: 'studyMaterial', maxCount: 1 }],
@@ -55,6 +55,8 @@ export class VideoLectureController {
   ) {
     return this.createVideoLecture(dto, files);
   }
+
+
 
   private createVideoLecture(dto: CreateVideoLectureDto, files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[]; studyMaterial?: Express.Multer.File[] }) {
     const video = files.video?.[0];
@@ -102,12 +104,13 @@ export class VideoLectureController {
   }
 
   @Put('admin/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.UPDATE, 'video_lecture'])
   adminupdate(@Param('id') id: string, @Body() dto: UpdateVideoLectureDto) {
     return this.videoLectureService.update(id, dto);
   }
+
+
 
 
   @Put('video/:id')
@@ -117,6 +120,19 @@ export class VideoLectureController {
     FileInterceptor('file', VideoLectureController.createSingleFileConfig('./uploads/VideoLecture/videos', FileSizeLimit.VIDEO_SIZE))
   )
   async uploadVideo(
+    @Param('id') id: string,
+    @UploadedFile(new ParseFilePipe({ validators: [] })) file: Express.Multer.File,
+  ) {
+    return this.handleVideoUpload(id, file);
+  }
+
+  @Put('admin/video/:id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @UseInterceptors(
+    FileInterceptor('file', VideoLectureController.createSingleFileConfig('./uploads/VideoLecture/videos', FileSizeLimit.VIDEO_SIZE))
+  )
+  async adminuploadVideo(
     @Param('id') id: string,
     @UploadedFile(new ParseFilePipe({ validators: [] })) file: Express.Multer.File,
   ) {
@@ -136,25 +152,9 @@ export class VideoLectureController {
     return this.handleThumbnailUpload(id, file);
   }
 
-
-  @Put('admin/video/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.UPDATE, 'video_lecture'])
-  @UseInterceptors(
-    FileInterceptor('file', VideoLectureController.createSingleFileConfig('./uploads/VideoLecture/videos', FileSizeLimit.VIDEO_SIZE))
-  )
-  async adminuploadVideo(
-    @Param('id') id: string,
-    @UploadedFile(new ParseFilePipe({ validators: [] })) file: Express.Multer.File,
-  ) {
-    return this.handleVideoUpload(id, file);
-  }
-
   @Put('admin/thumbnail/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.UPDATE, 'video_lecture'])
   @UseInterceptors(
     FileInterceptor('file', VideoLectureController.createSingleFileConfig('./uploads/VideoLecture/thumbnails', FileSizeLimit.IMAGE_SIZE))
   )
@@ -164,6 +164,11 @@ export class VideoLectureController {
   ) {
     return this.handleThumbnailUpload(id, file);
   }
+
+
+
+
+
 
   private async handleVideoUpload(id: string, file: Express.Multer.File) {
     const videoData = await this.videoLectureService.findOne(id);

@@ -56,21 +56,7 @@ export class TutorDetailsController {
   @Put('profileImage')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/TutorDetail/profile',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      fileFilter: courseImageFileFilter,
-      limits: { 
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-        files: 1,
-        fields: 5
-      },
-    }),
+    FileInterceptor('file', TutorDetailsController.getProfileImageConfig())
   )
   @ApiOperation({ summary: 'Update tutor profile image' })
   @ApiConsumes('multipart/form-data')
@@ -108,20 +94,7 @@ export class TutorDetailsController {
   @Put('document')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @UseInterceptors(
-  FileInterceptor('file', {
-    storage: diskStorage({
-      destination: './uploads/TutorDetail/documents',
-      filename: (req, file, callback) => {
-        const randomName = randomBytes(16).toString('hex');
-        callback(null, `${randomName}${extname(file.originalname)}`);
-      },
-    }),
-    limits: { 
-      fileSize: FileSizeLimit.DOCUMENT_SIZE,
-      files: 1,
-      fields: 5
-    },
-  }),
+  FileInterceptor('file', TutorDetailsController.getDocumentConfig())
 )
 @ApiOperation({ summary: 'Upload tutor document' })
 @ApiConsumes('multipart/form-data')
@@ -183,5 +156,38 @@ async document(
     return this.tutorDetailsService.findById(id);
   }
 
-  
+  private static getProfileImageConfig() {
+    return {
+      storage: diskStorage({
+        destination: './uploads/TutorDetail/profile',
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      fileFilter: courseImageFileFilter,
+      limits: { 
+        fileSize: FileSizeLimit.IMAGE_SIZE,
+        files: 1,
+        fields: 5
+      },
+    };
+  }
+
+  private static getDocumentConfig() {
+    return {
+      storage: diskStorage({
+        destination: './uploads/TutorDetail/documents',
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: { 
+        fileSize: FileSizeLimit.DOCUMENT_SIZE,
+        files: 1,
+        fields: 5
+      },
+    };
+  }
 }
