@@ -4,6 +4,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiConsumes, ApiBody, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { diskStorage } from 'multer';
 import { extname } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import {  UpdatePageDto, PagePaginationDto } from './dto/page.dto';
@@ -25,10 +26,7 @@ export class PagesController {
       storage: diskStorage({
         destination: './uploads/Pages',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -114,10 +112,7 @@ export class PagesController {
       storage: diskStorage({
         destination: './uploads/Pages',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),

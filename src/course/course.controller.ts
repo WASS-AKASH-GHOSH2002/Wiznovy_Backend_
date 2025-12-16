@@ -10,6 +10,7 @@ import { PermissionAction, UserRole, FileSizeLimit } from '../enum';
 import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { CourseStatusDto } from './dto/course-status.dto';
 import { DeleteCourseDto } from './dto/delete-course.dto';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
@@ -32,10 +33,7 @@ export class CourseController {
       storage: diskStorage({
         destination: './uploads/Course/thumbnails',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -48,7 +46,14 @@ export class CourseController {
   create(
     @Body() createCourseDto: CreateCourseDto,
     @CurrentUser() user: Account,
-    @UploadedFiles() files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
+    @UploadedFiles(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
+        ],
+        fileIsRequired: false,
+      }),
+    ) files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
   ) {
     return this.courseService.create(createCourseDto, user.id, files);
   }
@@ -65,10 +70,7 @@ export class CourseController {
       storage: diskStorage({
         destination: './uploads/Course/thumbnails',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -81,7 +83,14 @@ export class CourseController {
   admincreate(
     @Body() createCourseDto: CreateCourseDto,
     @CurrentUser() user: Account,
-    @UploadedFiles() files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
+    @UploadedFiles(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
+        ],
+        fileIsRequired: false,
+      }),
+    ) files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
   ) {
     return this.courseService.create(createCourseDto, user.id, files);
   }
@@ -126,10 +135,7 @@ export class CourseController {
       storage: diskStorage({
         destination: './uploads/Course/thumbnails',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -143,7 +149,14 @@ export class CourseController {
     @Param('id') id: string,
     @Body() updateCourseDto: UpdateCourseDto,
     @CurrentUser() user: Account,
-    @UploadedFiles() files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
+    @UploadedFiles(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
+        ],
+        fileIsRequired: false,
+      }),
+    ) files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
   ) {
     return this.courseService.update(id, updateCourseDto, user.id, files);
   }
@@ -160,10 +173,7 @@ export class CourseController {
       storage: diskStorage({
         destination: './uploads/Course/thumbnails',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -177,7 +187,14 @@ export class CourseController {
     @Param('id') id: string,
     @Body() updateCourseDto: UpdateCourseDto,
     @CurrentUser() user: Account,
-    @UploadedFiles() files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
+    @UploadedFiles(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
+        ],
+        fileIsRequired: false,
+      }),
+    ) files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
   ) {
     return this.courseService.update(id, updateCourseDto, user.id, files);
   }
@@ -203,10 +220,7 @@ export class CourseController {
       storage: diskStorage({
         destination: './uploads/Course/images',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -240,10 +254,7 @@ export class CourseController {
       storage: diskStorage({
         destination: './uploads/Course/thumbnails',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),

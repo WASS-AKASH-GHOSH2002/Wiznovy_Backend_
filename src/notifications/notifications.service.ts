@@ -16,8 +16,7 @@ export class NotificationsService {
     const header = {
       headers: {
         'cache-control': 'no-cache',
-        authorization:
-          'key=AAAAqKmoPwY:APA91bEuJpsVMvfhzcwPbXUV3B6Wu6kQl8iA6738dXuvdMHSELGZegyGLc90uP0LqTSGkzMv08ULzE29_lDsvJTSUr2BH2Flk-w2',
+        authorization: `key=${process.env.FCM_SERVER_KEY}`,
         'content-type': 'application/json',
       },
     };

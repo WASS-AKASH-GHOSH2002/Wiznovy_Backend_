@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Put, UploadedFile, UploadedFiles, UseInterceptors, } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Put, UploadedFile, UploadedFiles, UseInterceptors, ParseFilePipe, MaxFileSizeValidator } from '@nestjs/common';
 import { BookService } from './book.service';
 import { CreateBookDto, BookPaginationDto, UpdateStatusDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { PermissionAction, UserRole, FileSizeLimit } from 'src/enum';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -70,10 +71,7 @@ export class BookController {
       storage: diskStorage({
         destination: './uploads/Books',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -84,7 +82,13 @@ export class BookController {
   )
   async coverImage(
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
+        ],
+      }),
+    ) file: Express.Multer.File,
   ) {
     return this.bookService.updateCoverImage(id, file.path);
   }
@@ -98,10 +102,7 @@ export class BookController {
       storage: diskStorage({
         destination: './uploads/Books',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -112,7 +113,13 @@ export class BookController {
   )
   async addImages(
     @Param('id') id: string,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
+        ],
+      }),
+    ) files: Express.Multer.File[],
   ) {
     return this.bookService.addImages(id, files);
   }

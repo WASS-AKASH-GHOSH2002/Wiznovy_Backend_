@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Put, UseInterceptors, UploadedFile, ParseFilePipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Put, UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator } from '@nestjs/common';
 import { CountryService } from './country.service';
 import { BulkCountryStatusDto, CountryPaginationDto, CreateCountryDto } from './dto/create-country.dto';
 import { UpdateCountryDto } from './dto/update-country.dto';
@@ -12,6 +12,7 @@ import { GoalStatusDto } from 'src/goal/dto/create-goal.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'node:path';
+import { randomBytes } from 'node:crypto';
 
 @Controller('country')
 export class CountryController {
@@ -78,6 +79,7 @@ export class CountryController {
     return this.countryService.bulkUpdateStatus(dto);
   }
 
+  
   @Put('image/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
@@ -87,10 +89,7 @@ export class CountryController {
       storage: diskStorage({
         destination: './uploads/Country/images',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -103,7 +102,9 @@ export class CountryController {
     @Param('id') id: string,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [],
+        validators: [
+          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
+        ],
       }),
     )
     file: Express.Multer.File,

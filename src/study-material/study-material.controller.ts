@@ -9,6 +9,7 @@ import { PermissionAction, UserRole, FileSizeLimit } from 'src/enum';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { randomBytes } from 'node:crypto';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { Account } from 'src/account/entities/account.entity';
@@ -28,10 +29,7 @@ export class StudyMaterialController {
       storage: diskStorage({
         destination: './uploads/StudyMaterial/pdfs',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -58,10 +56,7 @@ export class StudyMaterialController {
       storage: diskStorage({
         destination: './uploads/StudyMaterial/pdfs',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -136,10 +131,7 @@ export class StudyMaterialController {
       storage: diskStorage({
         destination: './uploads/StudyMaterial/pdfs',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -170,10 +162,7 @@ export class StudyMaterialController {
       storage: diskStorage({
         destination: './uploads/StudyMaterial/pdfs',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),

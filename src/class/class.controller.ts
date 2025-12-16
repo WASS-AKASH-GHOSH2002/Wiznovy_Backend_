@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Put, UploadedFile, UseInterceptors, ParseFilePipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Put, UploadedFile, UseInterceptors, ParseFilePipe, MaxFileSizeValidator } from '@nestjs/common';
 import { ClassService } from './class.service';
 import { CreateClassDto, ClassPaginationDto, UpdateStatusDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { PermissionAction, UserRole, FileSizeLimit } from 'src/enum';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -70,10 +71,7 @@ export class ClassController {
       storage: diskStorage({
         destination: './uploads/Classes',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -86,7 +84,9 @@ export class ClassController {
     @Param('id') id: string,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [],
+        validators: [
+          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
+        ],
       }),
     )
     file: Express.Multer.File,
