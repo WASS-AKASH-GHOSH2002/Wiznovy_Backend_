@@ -28,14 +28,8 @@ import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 
 @Controller('notice')
 export class NoticeController {
-  constructor(private readonly noticeService: NoticeService) {}
-
-  @Post()
-  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.CREATE, 'notice'])
-  @UseInterceptors(
-    FileInterceptor('file', {
+  private static getStorageConfig() {
+    return {
       storage: diskStorage({
         destination: './uploads/Notice',
         filename: (req, file, callback) => {
@@ -46,8 +40,16 @@ export class NoticeController {
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
       },
-    }),
-  )
+    };
+  }
+
+  constructor(private readonly noticeService: NoticeService) {}
+
+  @Post()
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.CREATE, 'notice'])
+  @UseInterceptors(FileInterceptor('file', NoticeController.getStorageConfig()))
   async create(
     @UploadedFile(
       new ParseFilePipe({
@@ -78,20 +80,7 @@ export class NoticeController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'notice'])
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/Notice',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', NoticeController.getStorageConfig()))
   async image(
     @Param('id') id: string,
     @UploadedFile(

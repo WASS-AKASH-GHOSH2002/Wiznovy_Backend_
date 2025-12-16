@@ -16,7 +16,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { Account } from 'src/account/entities/account.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
@@ -38,6 +38,21 @@ import {
 @ApiBearerAuth('JWT-auth')
 @Controller('user-details')
 export class UserDetailsController {
+  private static getStorageConfig() {
+    return {
+      storage: diskStorage({
+        destination: './uploads/UserDetail/profile',
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.IMAGE_SIZE,
+      },
+    };
+  }
+
   constructor(private readonly userDetailsService: UserDetailsService) {}
 
   @Patch('update')
@@ -55,20 +70,7 @@ export class UserDetailsController {
 
   @Put('profileImage')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/UserDetail/profile',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', UserDetailsController.getStorageConfig()))
   @ApiOperation({ summary: 'Update user profile image' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({

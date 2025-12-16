@@ -16,13 +16,8 @@ import { UserRole, FileSizeLimit } from 'src/enum';
 @ApiBearerAuth('JWT-auth')
 @Controller('pages')
 export class PagesController {
-  constructor(private readonly pagesService: PagesService) { }
-
-  @Post()
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @UseInterceptors(
-    FileInterceptor('file', {
+  private static getStorageConfig() {
+    return {
       storage: diskStorage({
         destination: './uploads/Pages',
         filename: (req, file, callback) => {
@@ -33,8 +28,15 @@ export class PagesController {
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
       },
-    }),
-  )
+    };
+  }
+
+  constructor(private readonly pagesService: PagesService) { }
+
+  @Post()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @UseInterceptors(FileInterceptor('file', PagesController.getStorageConfig()))
   @ApiOperation({ summary: 'Create new page' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -107,20 +109,7 @@ export class PagesController {
   @Put('update/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/Pages',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', PagesController.getStorageConfig()))
   @ApiOperation({ summary: 'Update page image' })
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'id', type: Number, example: 1 })

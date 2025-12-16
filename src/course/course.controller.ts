@@ -19,17 +19,8 @@ import { courseImageFileFilter } from '../utils/fileUpload.utils';
 
 @Controller('course')
 export class CourseController {
-  constructor(private readonly courseService: CourseService) { }
-
-  @Post()
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
-  @UsePipes(new ValidationPipe({ transform: true }))
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'image', maxCount: 1 },
-      { name: 'thumbnail', maxCount: 1 }
-    ], {
+  private static getThumbnailStorageConfig() {
+    return {
       storage: diskStorage({
         destination: './uploads/Course/thumbnails',
         filename: (req, file, callback) => {
@@ -41,7 +32,36 @@ export class CourseController {
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
       },
-    })
+    };
+  }
+
+  private static getImageStorageConfig() {
+    return {
+      storage: diskStorage({
+        destination: './uploads/Course/images',
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      fileFilter: courseImageFileFilter,
+      limits: {
+        fileSize: FileSizeLimit.IMAGE_SIZE,
+      },
+    };
+  }
+
+  constructor(private readonly courseService: CourseService) { }
+
+  @Post()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'image', maxCount: 1 },
+      { name: 'thumbnail', maxCount: 1 }
+    ], CourseController.getThumbnailStorageConfig())
   )
   create(
     @Body() createCourseDto: CreateCourseDto,
@@ -66,19 +86,7 @@ export class CourseController {
     FileFieldsInterceptor([
       { name: 'image', maxCount: 1 },
       { name: 'thumbnail', maxCount: 1 }
-    ], {
-      storage: diskStorage({
-        destination: './uploads/Course/thumbnails',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      fileFilter: courseImageFileFilter,
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    })
+    ], CourseController.getThumbnailStorageConfig())
   )
   admincreate(
     @Body() createCourseDto: CreateCourseDto,
@@ -131,19 +139,7 @@ export class CourseController {
     FileFieldsInterceptor([
       { name: 'image', maxCount: 1 },
       { name: 'thumbnail', maxCount: 1 }
-    ], {
-      storage: diskStorage({
-        destination: './uploads/Course/thumbnails',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      fileFilter: courseImageFileFilter,
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    })
+    ], CourseController.getThumbnailStorageConfig())
   )
   update(
     @Param('id') id: string,
@@ -169,19 +165,7 @@ export class CourseController {
     FileFieldsInterceptor([
       { name: 'image', maxCount: 1 },
       { name: 'thumbnail', maxCount: 1 }
-    ], {
-      storage: diskStorage({
-        destination: './uploads/Course/thumbnails',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      fileFilter: courseImageFileFilter,
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    })
+    ], CourseController.getThumbnailStorageConfig())
   )
   adminUpdate(
     @Param('id') id: string,
@@ -215,21 +199,7 @@ export class CourseController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'course'])
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/Course/images',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      fileFilter: courseImageFileFilter,
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', CourseController.getImageStorageConfig()))
   async image(
     @Param('id') id: string,
     @UploadedFile(
@@ -249,21 +219,7 @@ export class CourseController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'course'])
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/Course/thumbnails',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      fileFilter: courseImageFileFilter,
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', CourseController.getThumbnailStorageConfig()))
   async thumbnail(
     @Param('id') id: string,
     @UploadedFile(

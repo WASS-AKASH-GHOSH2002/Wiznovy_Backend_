@@ -48,14 +48,8 @@ import {
 @ApiBearerAuth('JWT-auth')
 @Controller('walk-through')
 export class WalkThroughController {
-  constructor(private readonly walkThroughService: WalkThroughService) {}
-
-  @Post()
-  // @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  // @Roles(UserRole.ADMIN, UserRole.STAFF)
-  // @CheckPermissions([PermissionAction.CREATE, 'walkthrough'])
-  @UseInterceptors(
-    FileInterceptor('file', {
+  private static getStorageConfig() {
+    return {
       storage: diskStorage({
         destination: './uploads/WalkThrough',
         filename: (req, file, callback) => {
@@ -66,8 +60,16 @@ export class WalkThroughController {
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
       },
-    }),
-  )
+    };
+  }
+
+  constructor(private readonly walkThroughService: WalkThroughService) {}
+
+  @Post()
+  // @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  // @Roles(UserRole.ADMIN, UserRole.STAFF)
+  // @CheckPermissions([PermissionAction.CREATE, 'walkthrough'])
+  @UseInterceptors(FileInterceptor('file', WalkThroughController.getStorageConfig()))
   @ApiOperation({ summary: 'Create a new walk-through' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -147,20 +149,7 @@ export class WalkThroughController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
  // @CheckPermissions([PermissionAction.UPDATE, 'walkthrough'])
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/WalkThrough',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', WalkThroughController.getStorageConfig()))
   @ApiOperation({ summary: 'Update walk-through image' })
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })

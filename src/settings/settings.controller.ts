@@ -19,13 +19,30 @@ import { SettingDto } from './dto/setting.dto';
 import { SettingsService } from './settings.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 
 @Controller('settings')
 export class SettingsController {
   version = new Date();
+  
+  private static getStorageConfig() {
+    return {
+      storage: diskStorage({
+        destination: './uploads/settings',
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.LOGO_SIZE,
+      },
+    };
+  }
+
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
@@ -50,23 +67,7 @@ export class SettingsController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'setting'])
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/settings',
-        filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.LOGO_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', SettingsController.getStorageConfig()))
   async logo(
     @UploadedFile(
       new ParseFilePipe({

@@ -15,6 +15,21 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Controller('books')
 export class BookController {
+  private static getStorageConfig() {
+    return {
+      storage: diskStorage({
+        destination: './uploads/Books',
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.IMAGE_SIZE,
+      },
+    };
+  }
+
   constructor(private readonly bookService: BookService) {}
 
   @Post()
@@ -66,20 +81,7 @@ export class BookController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'book'])
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/Books',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', BookController.getStorageConfig()))
   async coverImage(
     @Param('id') id: string,
     @UploadedFile(
@@ -97,20 +99,7 @@ export class BookController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.CREATE, 'book'])
-  @UseInterceptors(
-    FilesInterceptor('files', 10, {
-      storage: diskStorage({
-        destination: './uploads/Books',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FilesInterceptor('files', 10, BookController.getStorageConfig()))
   async addImages(
     @Param('id') id: string,
     @UploadedFiles(

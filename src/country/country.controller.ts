@@ -16,6 +16,21 @@ import { randomBytes } from 'node:crypto';
 
 @Controller('country')
 export class CountryController {
+  private static getStorageConfig() {
+    return {
+      storage: diskStorage({
+        destination: './uploads/Country/images',
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.IMAGE_SIZE,
+      },
+    };
+  }
+
   constructor(private readonly countryService: CountryService) {}
 
   @Post()
@@ -84,20 +99,7 @@ export class CountryController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'country'])
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/Country/images',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', CountryController.getStorageConfig()))
   async uploadImage(
     @Param('id') id: string,
     @UploadedFile(

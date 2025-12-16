@@ -9,12 +9,28 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { PermissionAction, UserRole, FileSizeLimit } from 'src/enum';
 import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 
 @Controller('unit')
 export class UnitController {
+  private static getStorageConfig() {
+    return {
+      storage: diskStorage({
+        destination: './uploads/UnitImg',
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.IMAGE_SIZE,
+      },
+    };
+  }
+
   constructor(private readonly unitService: UnitService) { }
 
   @Post()
@@ -24,21 +40,7 @@ export class UnitController {
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'image', maxCount: 1 }
-    ], {
-      storage: diskStorage({
-        destination: './uploads/UnitImg',
-        filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    })
+    ], UnitController.getStorageConfig())
   )
   create(
     @Body() dto: CreateUnitDto,
@@ -55,21 +57,7 @@ export class UnitController {
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'image', maxCount: 1 }
-    ], {
-      storage: diskStorage({
-        destination: './uploads/UnitImg',
-        filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    })
+    ], UnitController.getStorageConfig())
   )
   admincreate(
     @Body() dto: CreateUnitDto,
@@ -139,23 +127,7 @@ export class UnitController {
   @Put('imge/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, )
   @Roles(UserRole.TUTOR)
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/UnitImg',
-        filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', UnitController.getStorageConfig()))
   async image(
     @Param('id') id: string,
     @UploadedFile(
@@ -175,23 +147,7 @@ export class UnitController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'unit'])
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/UnitImg',
-        filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', UnitController.getStorageConfig()))
   async adminimage(
     @Param('id') id: string,
     @UploadedFile(

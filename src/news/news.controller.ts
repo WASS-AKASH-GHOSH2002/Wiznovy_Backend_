@@ -31,6 +31,21 @@ import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 
 @Controller('news')
 export class NewsController {
+  private static getStorageConfig() {
+    return {
+      storage: diskStorage({
+        destination: './uploads/news',
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.IMAGE_SIZE,
+      },
+    };
+  }
+
   constructor(private readonly newsService: NewsService) {}
 
   @Post()
@@ -71,20 +86,7 @@ export class NewsController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'news'])
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/news',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', NewsController.getStorageConfig()))
   async image(
     @Param('id') id: string,
     @UploadedFile(

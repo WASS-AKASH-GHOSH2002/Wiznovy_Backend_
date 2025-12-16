@@ -15,6 +15,21 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Controller('class')
 export class ClassController {
+  private static getStorageConfig() {
+    return {
+      storage: diskStorage({
+        destination: './uploads/Classes',
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.IMAGE_SIZE,
+      },
+    };
+  }
+
   constructor(private readonly classService: ClassService) {}
 
   @Post()
@@ -66,20 +81,7 @@ export class ClassController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'class'])
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/Classes',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', ClassController.getStorageConfig()))
   async image(
     @Param('id') id: string,
     @UploadedFile(
