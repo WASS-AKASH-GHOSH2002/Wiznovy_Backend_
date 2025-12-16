@@ -174,7 +174,11 @@ export class StudyMaterialController {
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
-      limits: { fileSize },
+      limits: { 
+        fileSize,
+        files: 1,
+        fields: 5
+      },
     };
   }
 
