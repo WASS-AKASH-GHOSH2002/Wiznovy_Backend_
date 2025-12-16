@@ -17,6 +17,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { randomBytes } from 'node:crypto';
 import { Account } from 'src/account/entities/account.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -59,10 +60,7 @@ export class UserDetailsController {
       storage: diskStorage({
         destination: './uploads/UserDetail/profile',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -94,7 +92,7 @@ export class UserDetailsController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          //new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 10 }),
+          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
         ],
       }),
     )

@@ -27,6 +27,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { DefaultStatus, PermissionAction, UserRole, FileSizeLimit } from 'src/enum';
@@ -58,10 +59,7 @@ export class WalkThroughController {
       storage: diskStorage({
         destination: './uploads/WalkThrough',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -154,10 +152,7 @@ export class WalkThroughController {
       storage: diskStorage({
         destination: './uploads/WalkThrough',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),

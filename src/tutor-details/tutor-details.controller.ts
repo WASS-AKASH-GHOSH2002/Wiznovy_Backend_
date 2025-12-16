@@ -16,6 +16,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { Account } from 'src/account/entities/account.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -59,10 +60,7 @@ export class TutorDetailsController {
       storage: diskStorage({
         destination: './uploads/TutorDetail/profile',
         filename: (req, file, callback) => {
-          const randomName = new Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+          const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
@@ -110,10 +108,7 @@ export class TutorDetailsController {
     storage: diskStorage({
       destination: './uploads/TutorDetail/documents',
       filename: (req, file, callback) => {
-        const randomName = new Array(32)
-          .fill(null)
-          .map(() => Math.round(Math.random() * 16).toString(16))
-          .join('');
+        const randomName = randomBytes(16).toString('hex');
         callback(null, `${randomName}${extname(file.originalname)}`);
       },
     }),
