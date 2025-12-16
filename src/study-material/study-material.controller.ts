@@ -160,7 +160,10 @@ export class StudyMaterialController {
       limits: {
         fileSize: FileSizeLimit.DOCUMENT_SIZE,
         files: 2,
-        fields: 10
+        fields: 10,
+        fieldNameSize: 100,
+        fieldSize: 1048576,
+        parts: 12
       },
     };
   }
@@ -177,7 +180,10 @@ export class StudyMaterialController {
       limits: { 
         fileSize,
         files: 1,
-        fields: 5
+        fields: 5,
+        fieldNameSize: 100,
+        fieldSize: 1048576,
+        parts: 7
       },
     };
   }

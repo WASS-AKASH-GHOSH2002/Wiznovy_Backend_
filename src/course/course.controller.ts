@@ -47,6 +47,29 @@ export class CourseController {
       { name: 'thumbnail', maxCount: 1 }
     ], CourseController.getStorageConfig('./uploads/Course/thumbnails'))
   )
+  Create(
+    @Body() createCourseDto: CreateCourseDto,
+    @CurrentUser() user: Account,
+    @UploadedFiles(
+      new ParseFilePipe({
+        validators: [],
+        fileIsRequired: false,
+      }),
+    ) files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
+  ) {
+    return this.courseService.create(createCourseDto, user.id, files);
+  }
+
+  @Post('admin')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'image', maxCount: 1 },
+      { name: 'thumbnail', maxCount: 1 }
+    ], CourseController.getStorageConfig('./uploads/Course/thumbnails'))
+  )
   create(
     @Body() createCourseDto: CreateCourseDto,
     @CurrentUser() user: Account,

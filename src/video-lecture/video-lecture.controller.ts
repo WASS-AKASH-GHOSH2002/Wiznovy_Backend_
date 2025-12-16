@@ -193,7 +193,10 @@ export class VideoLectureController {
       limits: {
         fileSize: FileSizeLimit.VIDEO_SIZE,
         files: 3,
-        fields: 10
+        fields: 10,
+        fieldNameSize: 100,
+        fieldSize: 1048576,
+        parts: 15
       },
     };
   }
@@ -210,7 +213,10 @@ export class VideoLectureController {
       limits: { 
         fileSize,
         files: 1,
-        fields: 5
+        fields: 5,
+        fieldNameSize: 100,
+        fieldSize: 1048576,
+        parts: 7
       },
     };
   }

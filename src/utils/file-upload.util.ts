@@ -14,6 +14,20 @@ export class FileUploadUtil {
     });
   }
 
+  static createUploadConfig(destination: string, fileSize: number = FileSizeLimit.IMAGE_SIZE) {
+    return {
+      storage: this.createStorageConfig(destination),
+      limits: {
+        fileSize,
+        files: 1,
+        fields: 5,
+        fieldNameSize: 100,
+        fieldSize: 1048576,
+        parts: 7
+      },
+    };
+  }
+
   static createMultiFieldConfig(videoPath: string, thumbnailPath: string) {
     return {
       storage: diskStorage({
@@ -26,22 +40,13 @@ export class FileUploadUtil {
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
-      limits: { 
+      limits: {
         fileSize: FileSizeLimit.VIDEO_SIZE,
-        files: 10,
-        fieldSize: 1024 * 1024
-      },
-    };
-  }
-
-  static createSingleFileConfig(destination: string, fileSize: number) {
-    const safeFileSize = Math.min(fileSize, FileSizeLimit.VIDEO_SIZE);
-    return {
-      storage: this.createStorageConfig(destination),
-      limits: { 
-        fileSize: safeFileSize,
-        files: 1,
-        fieldSize: 1024 * 1024
+        files: 2,
+        fields: 10,
+        fieldNameSize: 100,
+        fieldSize: 1048576,
+        parts: 12
       },
     };
   }
