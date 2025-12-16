@@ -1,14 +1,10 @@
 import {
   Body,
   Controller,
-  FileTypeValidator,
   Get,
-  MaxFileSizeValidator,
-  Param,
   ParseFilePipe,
   Patch,
   Put,
-  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -70,6 +66,7 @@ export class UserDetailsController {
 
   @Put('profileImage')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.USER)
   @UseInterceptors(FileInterceptor('file', UserDetailsController.getStorageConfig()))
   @ApiOperation({ summary: 'Update user profile image' })
   @ApiConsumes('multipart/form-data')
@@ -93,9 +90,7 @@ export class UserDetailsController {
     @CurrentUser() user: Account,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
-        ],
+        validators: [],
       }),
     )
     file: Express.Multer.File,

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Query, Put, UseInterceptors, UploadedFile, ParseFilePipe, UploadedFiles, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Query, Put, UseInterceptors, UploadedFile, ParseFilePipe, UploadedFiles,  } from '@nestjs/common';
 import { VideoLectureService } from './video-lecture.service';
 import { CreateVideoLectureDto, Filter, UpdateVideoLectureDto, VideoLecturePaginationDto } from './dto/create-video-lecture.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -17,8 +17,20 @@ import { Account } from 'src/account/entities/account.entity';
 
 @Controller('video-lecture')
 export class VideoLectureController {
-  private static getMultiFileStorageConfig() {
-    return {
+  constructor(
+    private readonly videoLectureService: VideoLectureService,
+  ) { }
+
+@Post()
+@UseGuards(AuthGuard('jwt'), RolesGuard, )
+@Roles(UserRole.TUTOR)
+@UseInterceptors(
+  FileFieldsInterceptor(
+    [
+      { name: 'video', maxCount: 1 },
+      { name: 'thumbnail', maxCount: 1 },
+    ],
+    {
       storage: diskStorage({
         destination: (req, file, callback) => {
           const dest =
@@ -35,53 +47,7 @@ export class VideoLectureController {
       limits: {
         fileSize: FileSizeLimit.VIDEO_SIZE,
       },
-    };
-  }
-
-  private static getVideoStorageConfig() {
-    return {
-      storage: diskStorage({
-        destination: './uploads/VideoLecture/videos',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.VIDEO_SIZE,
-      },
-    };
-  }
-
-  private static getThumbnailStorageConfig() {
-    return {
-      storage: diskStorage({
-        destination: './uploads/VideoLecture/thumbnails',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    };
-  }
-
-  constructor(
-    private readonly videoLectureService: VideoLectureService,
-  ) { }
-
-@Post()
-@UseGuards(AuthGuard('jwt'), RolesGuard, )
-@Roles(UserRole.TUTOR)
-@UseInterceptors(
-  FileFieldsInterceptor(
-    [
-      { name: 'video', maxCount: 1 },
-      { name: 'thumbnail', maxCount: 1 },
-    ],
-    VideoLectureController.getMultiFileStorageConfig(),
+    },
   ),
 )
 create(
@@ -105,7 +71,27 @@ create(
       { name: 'video', maxCount: 1 },
       { name: 'thumbnail', maxCount: 1 },
     ],
-    VideoLectureController.getMultiFileStorageConfig(),
+    {
+      storage: diskStorage({
+        destination: (req, file, callback) => {
+          const dest =
+            file.fieldname === 'video'
+              ? './uploads/VideoLecture/videos'
+              : './uploads/VideoLecture/thumbnails';
+          callback(null, dest);
+        },
+        filename: (req, file, callback) => {
+          const randomName = new Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join('');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.VIDEO_SIZE,
+      },
+    },
   ),
 )
 admincreate(
@@ -171,7 +157,23 @@ admincreate(
   @Put('video/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, )
   @Roles(UserRole.TUTOR)
-  @UseInterceptors(FileInterceptor('file', VideoLectureController.getVideoStorageConfig()))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/VideoLecture/videos',
+        filename: (req, file, callback) => {
+          const randomName = new Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join('');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.VIDEO_SIZE,
+      },
+    }),
+  )
   async uploadVideo(
     @Param('id') id: string,
     @UploadedFile(
@@ -188,7 +190,23 @@ admincreate(
   @Put('thumbnail/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, )
   @Roles(UserRole.TUTOR)
-  @UseInterceptors(FileInterceptor('file', VideoLectureController.getThumbnailStorageConfig()))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/VideoLecture/thumbnails',
+        filename: (req, file, callback) => {
+          const randomName = new Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join('');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.IMAGE_SIZE,
+      },
+    }),
+  )
   async thumbnail(
     @Param('id') id: string,
     @UploadedFile(
@@ -207,7 +225,23 @@ admincreate(
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'video_lecture'])
-  @UseInterceptors(FileInterceptor('file', VideoLectureController.getVideoStorageConfig()))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/VideoLecture/videos',
+        filename: (req, file, callback) => {
+          const randomName = new Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join('');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.VIDEO_SIZE,
+      },
+    }),
+  )
   async adminuploadVideo(
     @Param('id') id: string,
     @UploadedFile(
@@ -225,7 +259,23 @@ admincreate(
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'video_lecture'])
-  @UseInterceptors(FileInterceptor('file', VideoLectureController.getThumbnailStorageConfig()))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/VideoLecture/thumbnails',
+        filename: (req, file, callback) => {
+          const randomName = new Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join('');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.IMAGE_SIZE,
+      },
+    }),
+  )
   async adminthumbnail(
     @Param('id') id: string,
     @UploadedFile(

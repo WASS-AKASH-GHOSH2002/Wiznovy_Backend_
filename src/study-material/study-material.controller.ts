@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards, Query, Put, UseInterceptors, UploadedFile, ParseFilePipe, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body,  Param, UseGuards, Query, Put, UseInterceptors, UploadedFile, ParseFilePipe, UsePipes, ValidationPipe } from '@nestjs/common';
 import { StudyMaterialService } from './study-material.service';
 import { CreateStudyMaterialDto, UpdateStudyMaterialDto, StudyMaterialPaginationDto } from './dto/create-study-material.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -16,8 +16,16 @@ import { Account } from 'src/account/entities/account.entity';
 
 @Controller('study-material')
 export class StudyMaterialController {
-  private static getStorageConfig() {
-    return {
+  constructor(
+    private readonly studyMaterialService: StudyMaterialService,
+  ) { }
+
+  @Post()
+  @UseGuards(AuthGuard('jwt'), RolesGuard, )
+  @Roles(UserRole.TUTOR)
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @UseInterceptors(
+    FileInterceptor('pdf', {
       storage: diskStorage({
         destination: './uploads/StudyMaterial/pdfs',
         filename: (req, file, callback) => {
@@ -28,18 +36,8 @@ export class StudyMaterialController {
       limits: {
         fileSize: FileSizeLimit.DOCUMENT_SIZE,
       },
-    };
-  }
-
-  constructor(
-    private readonly studyMaterialService: StudyMaterialService,
-  ) { }
-
-  @Post()
-  @UseGuards(AuthGuard('jwt'), RolesGuard, )
-  @Roles(UserRole.TUTOR)
-  @UsePipes(new ValidationPipe({ transform: true }))
-  @UseInterceptors(FileInterceptor('pdf', StudyMaterialController.getStorageConfig()))
+    }),
+  )
   create(
     @Body() dto: CreateStudyMaterialDto,
     @UploadedFile() pdf?: Express.Multer.File
@@ -53,7 +51,20 @@ export class StudyMaterialController {
   @Roles(UserRole.ADMIN, UserRole.STAFF)
  // @CheckPermissions([PermissionAction.CREATE, 'study_material'])
   @UsePipes(new ValidationPipe({ transform: true }))
-  @UseInterceptors(FileInterceptor('pdf', StudyMaterialController.getStorageConfig()))
+  @UseInterceptors(
+    FileInterceptor('pdf', {
+      storage: diskStorage({
+        destination: './uploads/StudyMaterial/pdfs',
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.DOCUMENT_SIZE,
+      },
+    }),
+  )
   admincreate(
     @Body() dto: CreateStudyMaterialDto,
     @UploadedFile() pdf?: Express.Multer.File
@@ -115,7 +126,23 @@ export class StudyMaterialController {
   @Put('pdf/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.TUTOR)
-  @UseInterceptors(FileInterceptor('file', StudyMaterialController.getStorageConfig()))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/StudyMaterial/pdfs',
+        filename: (req, file, callback) => {
+          const randomName = new Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join('');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.DOCUMENT_SIZE,
+      },
+    }),
+  )
   async pdf(
     @Param('id') id: string,
     @UploadedFile(
@@ -133,7 +160,23 @@ export class StudyMaterialController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'study_material'])
-  @UseInterceptors(FileInterceptor('file', StudyMaterialController.getStorageConfig()))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/StudyMaterial/pdfs',
+        filename: (req, file, callback) => {
+          const randomName = new Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join('');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.DOCUMENT_SIZE,
+      },
+    }),
+  )
   async adminpdf(
     @Param('id') id: string,
     @UploadedFile(

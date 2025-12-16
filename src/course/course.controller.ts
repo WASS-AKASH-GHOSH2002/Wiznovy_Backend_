@@ -19,26 +19,10 @@ import { courseImageFileFilter } from '../utils/fileUpload.utils';
 
 @Controller('course')
 export class CourseController {
-  private static getThumbnailStorageConfig() {
+  private static getStorageConfig(destination: string) {
     return {
       storage: diskStorage({
-        destination: './uploads/Course/thumbnails',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      fileFilter: courseImageFileFilter,
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-      },
-    };
-  }
-
-  private static getImageStorageConfig() {
-    return {
-      storage: diskStorage({
-        destination: './uploads/Course/images',
+        destination,
         filename: (req, file, callback) => {
           const randomName = randomBytes(16).toString('hex');
           return callback(null, `${randomName}${extname(file.originalname)}`);
@@ -61,16 +45,14 @@ export class CourseController {
     FileFieldsInterceptor([
       { name: 'image', maxCount: 1 },
       { name: 'thumbnail', maxCount: 1 }
-    ], CourseController.getThumbnailStorageConfig())
+    ], CourseController.getStorageConfig('./uploads/Course/thumbnails'))
   )
   create(
     @Body() createCourseDto: CreateCourseDto,
     @CurrentUser() user: Account,
     @UploadedFiles(
       new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
-        ],
+        validators: [],
         fileIsRequired: false,
       }),
     ) files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
@@ -78,30 +60,7 @@ export class CourseController {
     return this.courseService.create(createCourseDto, user.id, files);
   }
 
-   @Post('admin')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
-  @UsePipes(new ValidationPipe({ transform: true }))
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'image', maxCount: 1 },
-      { name: 'thumbnail', maxCount: 1 }
-    ], CourseController.getThumbnailStorageConfig())
-  )
-  admincreate(
-    @Body() createCourseDto: CreateCourseDto,
-    @CurrentUser() user: Account,
-    @UploadedFiles(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
-        ],
-        fileIsRequired: false,
-      }),
-    ) files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
-  ) {
-    return this.courseService.create(createCourseDto, user.id, files);
-  }
+
 
 
   @Get('admin')
@@ -139,7 +98,7 @@ export class CourseController {
     FileFieldsInterceptor([
       { name: 'image', maxCount: 1 },
       { name: 'thumbnail', maxCount: 1 }
-    ], CourseController.getThumbnailStorageConfig())
+    ], CourseController.getStorageConfig('./uploads/Course/thumbnails'))
   )
   update(
     @Param('id') id: string,
@@ -147,9 +106,7 @@ export class CourseController {
     @CurrentUser() user: Account,
     @UploadedFiles(
       new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
-        ],
+        validators: [],
         fileIsRequired: false,
       }),
     ) files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
@@ -157,31 +114,7 @@ export class CourseController {
     return this.courseService.update(id, updateCourseDto, user.id, files);
   }
 
-  @Patch('admin/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
-  @UsePipes(new ValidationPipe({ transform: true }))
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'image', maxCount: 1 },
-      { name: 'thumbnail', maxCount: 1 }
-    ], CourseController.getThumbnailStorageConfig())
-  )
-  adminUpdate(
-    @Param('id') id: string,
-    @Body() updateCourseDto: UpdateCourseDto,
-    @CurrentUser() user: Account,
-    @UploadedFiles(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
-        ],
-        fileIsRequired: false,
-      }),
-    ) files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
-  ) {
-    return this.courseService.update(id, updateCourseDto, user.id, files);
-  }
+
 
 
   @Patch('status/:id')
@@ -199,14 +132,12 @@ export class CourseController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'course'])
-  @UseInterceptors(FileInterceptor('file', CourseController.getImageStorageConfig()))
+  @UseInterceptors(FileInterceptor('file', CourseController.getStorageConfig('./uploads/Course/images')))
   async image(
     @Param('id') id: string,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE })
-        ],
+        validators: [],
       }),
     )
     file: Express.Multer.File,
@@ -219,14 +150,12 @@ export class CourseController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'course'])
-  @UseInterceptors(FileInterceptor('file', CourseController.getThumbnailStorageConfig()))
+  @UseInterceptors(FileInterceptor('file', CourseController.getStorageConfig('./uploads/Course/thumbnails')))
   async thumbnail(
     @Param('id') id: string,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE })
-        ],
+        validators: [],
       }),
     )
     file: Express.Multer.File,
@@ -243,16 +172,7 @@ export class CourseController {
     return this.courseService.remove(id);
   }
 
-  @Delete('admin/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.DELETE, 'course'])
-  deleteCourse(
-    @Param('id') id: string,
-    @Body() dto: DeleteCourseDto
-  ) {
-    return this.courseService.deleteCourse(id, dto.reason);
-  }
+
 
 
 @Get(':id/full')
