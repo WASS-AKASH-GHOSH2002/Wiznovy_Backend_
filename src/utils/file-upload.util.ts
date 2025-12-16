@@ -26,14 +26,23 @@ export class FileUploadUtil {
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
-      limits: { fileSize: FileSizeLimit.VIDEO_SIZE },
+      limits: { 
+        fileSize: FileSizeLimit.VIDEO_SIZE,
+        files: 10,
+        fieldSize: 1024 * 1024
+      },
     };
   }
 
   static createSingleFileConfig(destination: string, fileSize: number) {
+    const safeFileSize = Math.min(fileSize, FileSizeLimit.VIDEO_SIZE);
     return {
       storage: this.createStorageConfig(destination),
-      limits: { fileSize },
+      limits: { 
+        fileSize: safeFileSize,
+        files: 1,
+        fieldSize: 1024 * 1024
+      },
     };
   }
 }
