@@ -13,6 +13,7 @@ import { Account } from 'src/account/entities/account.entity';
 import { FileUploadUtil } from 'src/utils/file-upload.util';
 
 
+
 @Controller('video-lecture')
 export class VideoLectureController {
   constructor(
