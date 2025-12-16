@@ -26,7 +26,7 @@ export class StudyMaterialService {
     // private readonly userPurchaseService: UserPurchaseService
   ) { }
 
-async create(dto: CreateStudyMaterialDto, pdf?: Express.Multer.File) {
+async create(dto: CreateStudyMaterialDto, pdf?: Express.Multer.File, thumbnail?: Express.Multer.File) {
   let validVideoLectureId = null;
   
   if (dto.videoLectureId) {
@@ -56,6 +56,11 @@ async create(dto: CreateStudyMaterialDto, pdf?: Express.Multer.File) {
   if (pdf) {
     materialData.fileUrl = process.env.WIZNOVY_CDN_LINK + pdf.path;
     materialData.filePath = pdf.path;
+  }
+
+  if (thumbnail) {
+    materialData.thumbnailUrl = process.env.WIZNOVY_CDN_LINK + thumbnail.path;
+    materialData.thumbnailPath = thumbnail.path;
   }
 
   const obj = this.repo.create(materialData);

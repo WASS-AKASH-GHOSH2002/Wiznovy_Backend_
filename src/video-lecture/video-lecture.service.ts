@@ -21,7 +21,7 @@ export class VideoLectureService {
     private readonly courseService: CourseService
   ) { }
 
-  async create(dto: CreateVideoLectureDto, video?: Express.Multer.File, thumbnail?: Express.Multer.File) {
+  async create(dto: CreateVideoLectureDto, video?: Express.Multer.File, thumbnail?: Express.Multer.File, studyMaterial?: Express.Multer.File) {
     
     const videoData: any = { ...dto };
     
@@ -33,6 +33,11 @@ export class VideoLectureService {
     if (thumbnail) {
       videoData.thumbnailUrl = process.env.WIZNOVY_CDN_LINK + thumbnail.path;
       videoData.thumbnailPath = thumbnail.path;
+    }
+    
+    if (studyMaterial) {
+      videoData.studyMaterialUrl = process.env.WIZNOVY_CDN_LINK + studyMaterial.path;
+      videoData.studyMaterialPath = studyMaterial.path;
     }
     
     const result = await this.repo.save(videoData);

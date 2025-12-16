@@ -10,7 +10,9 @@ import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { Account } from 'src/account/entities/account.entity';
-import { FileUploadUtil } from 'src/utils/file-upload.util';
+import { diskStorage } from 'multer';
+import { extname } from 'node:path';
+import { randomBytes } from 'node:crypto';
 
 
 
@@ -25,13 +27,13 @@ export class VideoLectureController {
   @Roles(UserRole.TUTOR)
   @UseInterceptors(
     FileFieldsInterceptor(
-      [{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }],
-      FileUploadUtil.createMultiFieldConfig('./uploads/VideoLecture/videos', './uploads/VideoLecture/thumbnails')
+      [{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }, { name: 'studyMaterial', maxCount: 1 }],
+      VideoLectureController.createVideoLectureUploadConfig()
     )
   )
   create(
     @Body() dto: CreateVideoLectureDto,
-    @UploadedFiles() files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[] },
+    @UploadedFiles() files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[]; studyMaterial?: Express.Multer.File[] },
     @CurrentUser() user: Account,
   ) {
     return this.createVideoLecture(dto, files);
@@ -42,22 +44,23 @@ export class VideoLectureController {
   @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
   @UseInterceptors(
     FileFieldsInterceptor(
-      [{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }],
-      FileUploadUtil.createMultiFieldConfig('./uploads/VideoLecture/videos', './uploads/VideoLecture/thumbnails')
+      [{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }, { name: 'studyMaterial', maxCount: 1 }],
+      VideoLectureController.createVideoLectureUploadConfig()
     )
   )
   admincreate(
     @Body() dto: CreateVideoLectureDto,
-    @UploadedFiles() files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[] },
+    @UploadedFiles() files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[]; studyMaterial?: Express.Multer.File[] },
     @CurrentUser() user: Account,
   ) {
     return this.createVideoLecture(dto, files);
   }
 
-  private createVideoLecture(dto: CreateVideoLectureDto, files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[] }) {
+  private createVideoLecture(dto: CreateVideoLectureDto, files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[]; studyMaterial?: Express.Multer.File[] }) {
     const video = files.video?.[0];
     const thumbnail = files.thumbnail?.[0];
-    return this.videoLectureService.create(dto, video, thumbnail);
+    const studyMaterial = files.studyMaterial?.[0];
+    return this.videoLectureService.create(dto, video, thumbnail, studyMaterial);
   }
 
 
@@ -111,7 +114,7 @@ export class VideoLectureController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.TUTOR)
   @UseInterceptors(
-    FileInterceptor('file', FileUploadUtil.createSingleFileConfig('./uploads/VideoLecture/videos', FileSizeLimit.VIDEO_SIZE))
+    FileInterceptor('file', VideoLectureController.createSingleFileConfig('./uploads/VideoLecture/videos', FileSizeLimit.VIDEO_SIZE))
   )
   async uploadVideo(
     @Param('id') id: string,
@@ -124,7 +127,7 @@ export class VideoLectureController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.TUTOR)
   @UseInterceptors(
-    FileInterceptor('file', FileUploadUtil.createSingleFileConfig('./uploads/VideoLecture/thumbnails', FileSizeLimit.IMAGE_SIZE))
+    FileInterceptor('file', VideoLectureController.createSingleFileConfig('./uploads/VideoLecture/thumbnails', FileSizeLimit.IMAGE_SIZE))
   )
   async thumbnail(
     @Param('id') id: string,
@@ -139,7 +142,7 @@ export class VideoLectureController {
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'video_lecture'])
   @UseInterceptors(
-    FileInterceptor('file', FileUploadUtil.createSingleFileConfig('./uploads/VideoLecture/videos', FileSizeLimit.VIDEO_SIZE))
+    FileInterceptor('file', VideoLectureController.createSingleFileConfig('./uploads/VideoLecture/videos', FileSizeLimit.VIDEO_SIZE))
   )
   async adminuploadVideo(
     @Param('id') id: string,
@@ -153,7 +156,7 @@ export class VideoLectureController {
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'video_lecture'])
   @UseInterceptors(
-    FileInterceptor('file', FileUploadUtil.createSingleFileConfig('./uploads/VideoLecture/thumbnails', FileSizeLimit.IMAGE_SIZE))
+    FileInterceptor('file', VideoLectureController.createSingleFileConfig('./uploads/VideoLecture/thumbnails', FileSizeLimit.IMAGE_SIZE))
   )
   async adminthumbnail(
     @Param('id') id: string,
@@ -172,5 +175,40 @@ export class VideoLectureController {
     return this.videoLectureService.thumbnail(file.path, fileData);
   }
 
+  private static createVideoLectureUploadConfig() {
+    return {
+      storage: diskStorage({
+        destination: (req, file, callback) => {
+          let dest;
+          if (file.fieldname === 'video') dest = './uploads/VideoLecture/videos';
+          else if (file.fieldname === 'thumbnail') dest = './uploads/VideoLecture/thumbnails';
+          else if (file.fieldname === 'studyMaterial') dest = './uploads/StudyMaterial/pdfs';
+          callback(null, dest);
+        },
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: {
+        fileSize: FileSizeLimit.VIDEO_SIZE,
+        files: 3,
+        fields: 10
+      },
+    };
+  }
+
+  private static createSingleFileConfig(destination: string, fileSize: number) {
+    return {
+      storage: diskStorage({
+        destination,
+        filename: (req, file, callback) => {
+          const randomName = randomBytes(16).toString('hex');
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+      limits: { fileSize },
+    };
+  }
 
 }
