@@ -65,7 +65,11 @@ export class TutorDetailsController {
         },
       }),
       fileFilter: courseImageFileFilter,
-      limits: { fileSize: FileSizeLimit.IMAGE_SIZE },
+      limits: { 
+        fileSize: FileSizeLimit.IMAGE_SIZE,
+        files: 1,
+        fields: 5
+      },
     }),
   )
   @ApiOperation({ summary: 'Update tutor profile image' })
@@ -112,7 +116,11 @@ export class TutorDetailsController {
         callback(null, `${randomName}${extname(file.originalname)}`);
       },
     }),
-    limits: { fileSize: FileSizeLimit.DOCUMENT_SIZE },
+    limits: { 
+      fileSize: FileSizeLimit.DOCUMENT_SIZE,
+      files: 1,
+      fields: 5
+    },
   }),
 )
 @ApiOperation({ summary: 'Upload tutor document' })

@@ -42,6 +42,8 @@ export class NewsController {
       }),
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
+        files: 1,
+        fields: 5
       },
     };
   }

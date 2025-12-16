@@ -26,6 +26,8 @@ export class BookController {
       }),
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
+        files: 10,
+        fields: 5
       },
     };
   }

@@ -31,6 +31,8 @@ export class CourseController {
       fileFilter: courseImageFileFilter,
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
+        files: 2,
+        fields: 10
       },
     };
   }

@@ -27,6 +27,8 @@ export class UnitController {
       }),
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
+        files: 1,
+        fields: 10
       },
     };
   }

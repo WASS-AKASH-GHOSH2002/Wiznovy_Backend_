@@ -42,6 +42,8 @@ export class BannerController {
       }),
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
+        files: 1,
+        fields: 5
       },
     }),
   )
@@ -124,6 +126,8 @@ export class BannerController {
       }),
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
+        files: 1,
+        fields: 5
       },
     }),
   )

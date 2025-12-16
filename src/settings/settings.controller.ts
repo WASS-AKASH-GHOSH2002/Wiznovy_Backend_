@@ -39,6 +39,8 @@ export class SettingsController {
       }),
       limits: {
         fileSize: FileSizeLimit.LOGO_SIZE,
+        files: 1,
+        fields: 5
       },
     };
   }
