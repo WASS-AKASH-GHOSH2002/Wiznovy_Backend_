@@ -1,13 +1,15 @@
 import { MailerService } from '@nestjs-modules/mailer';
-import { Injectable, NotAcceptableException } from '@nestjs/common';
+import { Injectable, Logger, NotAcceptableException } from '@nestjs/common';
 
 @Injectable()
 export class NodeMailerService {
+  private readonly logger = new Logger(NodeMailerService.name);
+
   constructor(private readonly mailService: MailerService) { }
 
-  sendEmail(name, email) {
+  async sendEmail(name: string, email: string) {
     try {
-      return this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         subject: 'Wrong Document!',
         html: `<!DOCTYPE html>
@@ -66,13 +68,13 @@ export class NodeMailerService {
 `,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error('Error sending email:', error);
     }
   }
 
-  sendOtpInEmail(email, otp) {
+  async sendOtpInEmail(email: string, otp: string) {
     try {
-      return this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         subject: 'Email Verification OTP',
         html: `
@@ -184,7 +186,7 @@ export class NodeMailerService {
         <div class="otp-code">${otp}</div>
         <p class="mt-4">
           Please use this OTP to complete your verification. The OTP is valid
-          for the next 10 minutes.
+          for the next 2 minutes.
         </p>
       </div>
       <div class="footer-text">
@@ -203,13 +205,13 @@ export class NodeMailerService {
         `,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error('Error sending OTP email:', error);
     }
   }
 
-  welcomeMail(email: string, name: string, joinDate: string) {
+   async welcomeMail(email: string, name: string, joinDate: string) {
     try {
-      return this.mailService.sendMail({
+      return await  this.mailService.sendMail({
         to: email,
         from: 'wiznovy@gmail.com',
         subject: 'Welcome to Wiznovy',
@@ -275,13 +277,14 @@ export class NodeMailerService {
       `,
       });
     } catch (error) {
+      this.logger.error('Failed to send welcome email:', error);
       throw new NotAcceptableException('Error in sending email');
     }
   }
 
-  tutorRegistrationMail(email: string, name: string, joinDate: string) {
+  async tutorRegistrationMail(email: string, name: string, joinDate: string) {
   try {
-    return this.mailService.sendMail({
+    return await this.mailService.sendMail({
       to: email,
       from: 'wiznovy@gmail.com',
       subject: 'Welcome to Wiznovy Tutor Platform – Profile Under Review',
@@ -354,15 +357,16 @@ export class NodeMailerService {
       `,
     });
   } catch (error) {
+    this.logger.error('Error sending tutor registration email:', error);
     throw new NotAcceptableException('Error in sending tutor registration email');
   }
 }
 
 
 
-  purchaseSuccessEmail(email, itemName, amount) {
+  async purchaseSuccessEmail(email: string, itemName: string, amount: number) {
     try {
-      return this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         subject: 'Purchase Successful - Wiznovy Team',
         html: `
@@ -383,13 +387,13 @@ export class NodeMailerService {
         `,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error('Error sending purchase success email:', error);
     }
   }
 
-  expiryWarningEmail(email, itemName, daysLeft) {
+  async expiryWarningEmail(email: string, itemName: string, daysLeft: number) {
     try {
-      return this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         subject: 'Content Expiring Soon - r',
         html: `
@@ -409,13 +413,13 @@ export class NodeMailerService {
         `,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error('Error sending expiry warning email:', error);
     }
   }
 
-  expiredEmail(email, itemName) {
+  async expiredEmail(email: string, itemName: string) {
     try {
-      return this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         subject: 'Content Expired - Wiznovy',
         html: `
@@ -435,13 +439,13 @@ export class NodeMailerService {
         `,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error('Error sending expired email:', error);
     }
   }
 
-  sendAccountLockNotification(email: string, unlockTime: Date) {
+  async sendAccountLockNotification(email: string, unlockTime: Date) {
     try {
-      return this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         subject: 'Account Locked - Wiznovy',
         html: `
@@ -462,11 +466,11 @@ export class NodeMailerService {
         `,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error('Error sending account lock notification:', error);
     }
   }
 
-  sendAccountStatusEmail(email: string, role: string, status: string, message: string) {
+  async sendAccountStatusEmail(email: string, role: string, status: string, message: string) {
     try {
       const statusColors = {
         'ACTIVE': '#28a745',
@@ -476,7 +480,7 @@ export class NodeMailerService {
         'DELETED': '#6c757d'
       };
 
-      return this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         subject: `Account Status Update - Wiznovy`,
         html: `
@@ -496,16 +500,16 @@ export class NodeMailerService {
         `,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error('Error sending account status email:', error);
     }
   }
 
-  sendSessionReminder(email: string, studentName: string, tutorName: string, sessionDate: string, startTime: string, endTime: string, hoursUntil: number) {
+  async sendSessionReminder(email: string, studentName: string, tutorName: string, sessionDate: string, startTime: string, endTime: string, hoursUntil: number) {
     try {
       const reminderType = hoursUntil === 24 ? '24 Hour' : '1 Hour';
       const urgencyColor = hoursUntil === 1 ? '#dc3545' : '#ffc107';
       
-      return this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         subject: `Session Reminder - ${reminderType} Notice`,
         html: `
@@ -531,13 +535,13 @@ export class NodeMailerService {
         `,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error('Error sending session reminder:', error);
     }
   }
 
-  sendSessionBookingConfirmation(email: string, studentName: string, tutorName: string, sessionDate: string, startTime: string, endTime: string, sessionType: string = 'lesson') {
+  async sendSessionBookingConfirmation(email: string, studentName: string, tutorName: string, sessionDate: string, startTime: string, endTime: string, sessionType: string = 'lesson') {
     try {
-      return this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         subject: `${sessionType === 'trial' ? 'Trial Lesson' : 'Lesson'} Booking Confirmed - Wiznovy`,
         html: `
@@ -564,13 +568,13 @@ export class NodeMailerService {
         `,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error('Error sending session booking confirmation:', error);
     }
   }
 
-  sendSessionCancellationEmail(email: string, studentName: string, tutorName: string, sessionDate: string, startTime: string, endTime: string, cancelledBy: string, refundEligible: boolean = false) {
+  async sendSessionCancellationEmail(email: string, studentName: string, tutorName: string, sessionDetails: { date: string; startTime: string; endTime: string }, cancelledBy: string, refundEligible: boolean = false) {
     try {
-      return this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         subject: 'Session Cancelled - Wiznovy',
         html: `
@@ -584,8 +588,8 @@ export class NodeMailerService {
             <p style="text-align: center;">Your session has been cancelled ${cancelledBy === 'student' ? 'as requested' : 'by the tutor'}.</p>
             <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
               <p style="margin: 5px 0;"><strong>Tutor:</strong> ${tutorName}</p>
-              <p style="margin: 5px 0;"><strong>Date:</strong> ${sessionDate}</p>
-              <p style="margin: 5px 0;"><strong>Time:</strong> ${startTime} - ${endTime}</p>
+              <p style="margin: 5px 0;"><strong>Date:</strong> ${sessionDetails.date}</p>
+              <p style="margin: 5px 0;"><strong>Time:</strong> ${sessionDetails.startTime} - ${sessionDetails.endTime}</p>
               <p style="margin: 5px 0;"><strong>Cancelled by:</strong> ${cancelledBy === 'student' ? 'You' : 'Tutor'}</p>
             </div>
             ${refundEligible ? 
@@ -601,13 +605,13 @@ export class NodeMailerService {
         `,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error('Error sending session cancellation email:', error);
     }
   }
 
-  sendSessionRescheduleEmail(email: string, studentName: string, tutorName: string, oldDate: string, oldStartTime: string, oldEndTime: string, newDate: string, newStartTime: string, newEndTime: string, rescheduledBy: string) {
+  async sendSessionRescheduleEmail(email: string, studentName: string, tutorName: string, oldSchedule: { date: string; startTime: string; endTime: string }, newSchedule: { date: string; startTime: string; endTime: string }, rescheduledBy: string) {
     try {
-      return this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         subject: 'Session Rescheduled - Wiznovy',
         html: `
@@ -623,15 +627,15 @@ export class NodeMailerService {
             <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
               <h4 style="margin: 0 0 10px 0; color: #856404;">Previous Schedule:</h4>
               <p style="margin: 5px 0;"><strong>Tutor:</strong> ${tutorName}</p>
-              <p style="margin: 5px 0;"><strong>Date:</strong> ${oldDate}</p>
-              <p style="margin: 5px 0;"><strong>Time:</strong> ${oldStartTime} - ${oldEndTime}</p>
+              <p style="margin: 5px 0;"><strong>Date:</strong> ${oldSchedule.date}</p>
+              <p style="margin: 5px 0;"><strong>Time:</strong> ${oldSchedule.startTime} - ${oldSchedule.endTime}</p>
             </div>
             
             <div style="background-color: #d1ecf1; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #17a2b8;">
               <h4 style="margin: 0 0 10px 0; color: #0c5460;">New Schedule:</h4>
               <p style="margin: 5px 0;"><strong>Tutor:</strong> ${tutorName}</p>
-              <p style="margin: 5px 0;"><strong>Date:</strong> ${newDate}</p>
-              <p style="margin: 5px 0;"><strong>Time:</strong> ${newStartTime} - ${newEndTime}</p>
+              <p style="margin: 5px 0;"><strong>Date:</strong> ${newSchedule.date}</p>
+              <p style="margin: 5px 0;"><strong>Time:</strong> ${newSchedule.startTime} - ${newSchedule.endTime}</p>
             </div>
             
             <p style="text-align: center;">Please make note of the new schedule. We'll send you reminder notifications before your session.</p>
@@ -643,13 +647,13 @@ export class NodeMailerService {
         `,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error('Error sending session reschedule email:', error);
     }
   }
 
-  sendNewMessageNotification(email: string, studentName: string, tutorName: string, messagePreview: string) {
+  async sendNewMessageNotification(email: string, studentName: string, tutorName: string, messagePreview: string) {
     try {
-      return this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         subject: `New Message from ${tutorName} - Wiznovy`,
         html: `
@@ -680,7 +684,7 @@ export class NodeMailerService {
         `,
       });
     } catch (error) {
-      console.log(error);
+      this.logger.error('Error sending new message notification:', error);
     }
   }
 }

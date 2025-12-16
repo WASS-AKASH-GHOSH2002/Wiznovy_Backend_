@@ -2,13 +2,13 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Rating } from './entities/rating.entity';
-import { CreateRatingDto, CreateSessionReviewDto, RatingFilterDto, TutorFeedbackFilterDto } from './dto/rating.dto';
-import { RatingStatus, UserRole } from 'src/enum';
+import { CreateRatingDto, CreateSessionReviewDto, RatingFilterDto, } from './dto/rating.dto';
 import { Account } from 'src/account/entities/account.entity';
 import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
 import { Course } from 'src/course/entities/course.entity';
 import { Session } from 'src/session/entities/session.entity';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { UserRole } from 'src/enum';
 
 @Injectable()
 export class RatingService {
@@ -27,58 +27,73 @@ export class RatingService {
   ) {}
 
   async create(dto: CreateRatingDto, accountId: string) {
-    const account = await this.accountRepo.findOne({
-      where: { id: accountId, roles: UserRole.USER },
-    });
-    if (!account) throw new NotFoundException('Account not found');
-
-    let tutorEntity = null;
-
-    if (dto.tutorId) {
-      tutorEntity = await this.tutorRepo.findOne({ where: { accountId: dto.tutorId } });
-      if (!tutorEntity) throw new NotFoundException('Tutor not found');
-
-      const existingRating = await this.ratingRepo.findOne({
-        where: { accountId, tutorId: tutorEntity.id }, 
-      });
-      if (existingRating) throw new ConflictException('You have already rated this tutor');
-    }
-
-    if (dto.courseId) {
-      const course = await this.courseRepo.findOne({ where: { id: dto.courseId } });
-      if (!course) throw new NotFoundException('Course not found');
-
-      const existingRating = await this.ratingRepo.findOne({
-        where: { accountId, courseId: dto.courseId },
-      });
-      if (existingRating) throw new ConflictException('You have already rated this course');
-    }
-
-    if (dto.sessionId) {
-      const session = await this.sessionRepo.findOne({ where: { id: dto.sessionId } });
-      if (!session) throw new NotFoundException('Session not found');
-
-      const existingRating = await this.ratingRepo.findOne({
-        where: { accountId, sessionId: dto.sessionId },
-      });
-      if (existingRating) throw new ConflictException('You have already rated this session');
-    }
+    await this.validateAccount(accountId);
+    const tutorEntity = await this.validateTutorRating(dto, accountId);
+    await this.validateCourseRating(dto, accountId);
+    await this.validateSessionRating(dto, accountId);
 
     const ratingData = {
       accountId,
       rating: dto.rating,
       comment: dto.comment,
-      tutorId: tutorEntity ? tutorEntity.accountId : null,
+      tutorId: tutorEntity?.accountId || null,
       courseId: dto.courseId || null,
       sessionId: dto.sessionId || null,
     };
 
     const savedRating = await this.ratingRepo.save(ratingData);
-
-    if (tutorEntity) await this.updateTutorRatings(tutorEntity.id);
-    if (dto.courseId) await this.updateCourseRatings(dto.courseId);
-
+    await this.updateRatings(tutorEntity, dto.courseId);
     return savedRating;
+  }
+
+  private async validateAccount(accountId: string) {
+    const account = await this.accountRepo.findOne({
+      where: { id: accountId, roles: UserRole.USER },
+    });
+    if (!account) throw new NotFoundException('Account not found');
+  }
+
+  private async validateTutorRating(dto: CreateRatingDto, accountId: string) {
+    if (!dto.tutorId) return null;
+
+    const tutorEntity = await this.tutorRepo.findOne({ where: { accountId: dto.tutorId } });
+    if (!tutorEntity) throw new NotFoundException('Tutor not found');
+
+    const existingRating = await this.ratingRepo.findOne({
+      where: { accountId, tutorId: tutorEntity.id },
+    });
+    if (existingRating) throw new ConflictException('You have already rated this tutor');
+    
+    return tutorEntity;
+  }
+
+  private async validateCourseRating(dto: CreateRatingDto, accountId: string) {
+    if (!dto.courseId) return;
+
+    const course = await this.courseRepo.findOne({ where: { id: dto.courseId } });
+    if (!course) throw new NotFoundException('Course not found');
+
+    const existingRating = await this.ratingRepo.findOne({
+      where: { accountId, courseId: dto.courseId },
+    });
+    if (existingRating) throw new ConflictException('You have already rated this course');
+  }
+
+  private async validateSessionRating(dto: CreateRatingDto, accountId: string) {
+    if (!dto.sessionId) return;
+
+    const session = await this.sessionRepo.findOne({ where: { id: dto.sessionId } });
+    if (!session) throw new NotFoundException('Session not found');
+
+    const existingRating = await this.ratingRepo.findOne({
+      where: { accountId, sessionId: dto.sessionId },
+    });
+    if (existingRating) throw new ConflictException('You have already rated this session');
+  }
+
+  private async updateRatings(tutorEntity: any, courseId?: string) {
+    if (tutorEntity) await this.updateTutorRatings(tutorEntity.id);
+    if (courseId) await this.updateCourseRatings(courseId);
   }
 
   async createSessionReview(dto: CreateSessionReviewDto, accountId: string) {
@@ -187,8 +202,8 @@ export class RatingService {
       .where('rating.tutorId = :tutorId', { tutorId: tutorDetail.accountId })
       .getRawOne();
 
-    const averageRating = parseFloat(result?.averageRating) || 0;
-    const totalRatings = parseInt(result?.totalRatings) || 0;
+    const averageRating = Number.parseFloat(result?.averageRating) || 0;
+    const totalRatings = Number.parseInt(result?.totalRatings) || 0;
 
     await this.tutorRepo.update({ id: tutorDetailId }, {
       averageRating,
@@ -204,8 +219,8 @@ export class RatingService {
       .where('rating.courseId = :courseId', { courseId })
       .getRawOne();
 
-    const averageRating = parseFloat(result.averageRating) || 0;
-    const totalRatings = parseInt(result.totalRatings) || 0;
+    const averageRating = Number.parseFloat(result.averageRating) || 0;
+    const totalRatings = Number.parseInt(result.totalRatings) || 0;
 
     const courseUpdate = this.courseRepo.create({
       id: courseId,

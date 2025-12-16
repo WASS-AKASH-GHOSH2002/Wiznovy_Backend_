@@ -59,7 +59,7 @@ export class TutorDetailsController {
       storage: diskStorage({
         destination: './uploads/TutorDetail/profile',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');
@@ -110,7 +110,7 @@ export class TutorDetailsController {
     storage: diskStorage({
       destination: './uploads/TutorDetail/documents',
       filename: (req, file, callback) => {
-        const randomName = Array(32)
+        const randomName = new Array(32)
           .fill(null)
           .map(() => Math.round(Math.random() * 16).toString(16))
           .join('');

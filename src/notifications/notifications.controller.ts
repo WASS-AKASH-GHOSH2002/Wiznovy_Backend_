@@ -36,7 +36,7 @@ export class NotificationsController {
       '/topics/all',
       false,
     );
-    if (res && res.success == 1) {
+    if (res?.success == 1) {
       return this.notificationsService.create({
         title: body.title,
         desc: body.desc,
@@ -82,7 +82,7 @@ export class NotificationsController {
       body.deviceId,
       true,
     );
-    if (res && res.success == 1) {
+    if (res?.success == 1) {
       for (const i in body.accountId) {
         await this.notificationsService.create({
           title: body.title,

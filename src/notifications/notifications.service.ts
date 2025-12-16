@@ -46,6 +46,7 @@ export class NotificationsService {
         return result.data;
       }
     } catch (error) {
+      console.error('Failed to send bulk notification:', error);
       return false;
     }
   }
@@ -60,7 +61,7 @@ export class NotificationsService {
       },
     });
 
-    if (!result) {
+    if (result === 0) {
       return this.repo.save(createDto);
     } else {
       return true;

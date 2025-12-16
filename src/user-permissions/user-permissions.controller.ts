@@ -49,7 +49,7 @@ export class UserPermissionsController {
   @Roles(...Object.values(UserRole))
   @CheckPermissions([PermissionAction.UPDATE, 'user_permission'])
   async status(@Param('id') id: string, @Body() dto: BoolStatusDto) {
-    if (!id || isNaN(+id)) {
+    if (!id || Number.isNaN(+id)) {
       throw new BadRequestException('Valid ID is required');
     }
     return this.userPermissionsService.status(+id, dto);

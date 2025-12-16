@@ -52,24 +52,24 @@ export class AccountService {
     }
 
     const encryptedPassword = await bcrypt.hash(dto.password, 13);
-    const obj = Object.assign({
+    const obj = {
       phoneNumber: dto.loginId,
       password: encryptedPassword,
       createdBy,
       roles: UserRole.STAFF,
-    });
+    };
     const payload = await this.repo.save(obj);
-    const object = Object.assign({
+    const object = {
       name: dto.name,
       email: dto.email,
-      dob: dto.dob,
+      dob: dto.dob.toISOString().split('T')[0],
       gender: dto.gender,
       city: dto.city,
       state: dto.state,
       country: dto.country,
       pin: dto.pin,
       accountId: payload.id,
-    });
+    };
     await this.staffRepo.save(object);
     return payload;
   }
@@ -305,7 +305,7 @@ async userProfile(id: string) {
 
   async getStaffDetails(dto: DefaultStatusPaginationDto) {
     const keyword = dto.keyword || '';
-    const query = await this.repo
+    const query =  this.repo
       .createQueryBuilder('account')
       .leftJoinAndSelect('account.staffDetail', 'staffDetail')
       .select([
@@ -371,8 +371,8 @@ async userProfile(id: string) {
     if (!result) {
       throw new NotFoundException('Account Not Found With This ID.');
     }
-    const obj = Object.assign(result, dto);
-    return this.staffRepo.save(obj);
+    Object.assign(result, dto);
+    return this.staffRepo.save(result);
   }
 
   async updateStaffPassword(accountId: string, dto: UpdateStaffPasswordDto) {
@@ -398,7 +398,7 @@ async userProfile(id: string) {
       throw new NotFoundException('Account Not Found With This ID.');
     }
     const oldStatus = result.status;
-    const obj = Object.assign(result, dto);
+    const obj = { ...result, ...dto };
     const updatedAccount = await this.repo.save(obj);
 
     
@@ -470,7 +470,7 @@ async userProfile(id: string) {
       }
     }
 
-    const obj = Object.assign(result, dto);
+    const obj = { ...result, ...dto };
     return this.repo.save(obj);
   }
 

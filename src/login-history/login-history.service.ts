@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Not } from 'typeorm';
+import { Repository, IsNull, } from 'typeorm';
 import { LoginHistory } from './entities/login-history.entity';
 import { LoginHistoryFilterDto } from './dto/login-history.dto';
 
@@ -8,7 +8,7 @@ import { LoginHistoryFilterDto } from './dto/login-history.dto';
 export class LoginHistoryService {
     constructor(
         @InjectRepository(LoginHistory)
-        private loginHistoryRepository: Repository<LoginHistory>,
+        private readonly loginHistoryRepository: Repository<LoginHistory>,
     ) { }
 
     async recordLogin(accountId: string, ip: string) {

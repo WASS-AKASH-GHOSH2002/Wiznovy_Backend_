@@ -13,7 +13,7 @@ import {
 import { BannerType, DefaultStatus } from 'src/enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class CreateBannerDto { }
+
 
 export class BannerDto {
   @ApiPropertyOptional({ enum: DefaultStatus, example: DefaultStatus.ACTIVE })

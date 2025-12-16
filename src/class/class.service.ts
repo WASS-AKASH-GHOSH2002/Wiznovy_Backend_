@@ -5,8 +5,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { Class } from './entities/class.entity';
 import { DefaultStatus } from 'src/enum';
-import { unlink } from 'fs/promises';
-import { join } from 'path';
+import { unlink } from 'node:fs/promises';
+import { join } from 'node:path';
 
 @Injectable()
 export class ClassService {
@@ -90,8 +90,8 @@ return this.repo.save(createClassDto)
     return classData;
   }
 
-  update(id: string, updateClassDto: UpdateClassDto) {
-    const classData = this.repo.findOne({
+  async update(id: string, updateClassDto: UpdateClassDto) {
+    const classData = await this.repo.findOne({
       where: {
         id
       }
@@ -109,7 +109,7 @@ return this.repo.save(createClassDto)
       if (!result) {
         throw new ConflictException('Class not found');
       }
-      const obj = Object.assign(result, dto);
+      const obj = { ...result, ...dto };
       return this.repo.save(obj);
     }
 

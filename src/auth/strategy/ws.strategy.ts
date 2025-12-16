@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Socket } from 'dgram';
+import { Socket } from 'node:dgram';
 import { Strategy } from 'passport-jwt';
 import { AuthService } from '../auth.service';
 

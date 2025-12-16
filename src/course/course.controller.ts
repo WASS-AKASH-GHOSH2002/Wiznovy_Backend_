@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Query, UseGuards, UseInterceptors, UploadedFile, UploadedFiles, ParseFilePipe, Patch, UsePipes, ValidationPipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Query, UseGuards, UseInterceptors, UploadedFile, UploadedFiles, ParseFilePipe, Patch, UsePipes, ValidationPipe, MaxFileSizeValidator, } from '@nestjs/common';
 import { CourseService } from './course.service';
 import { CreateCourseDto, UpdateCourseDto, CoursePaginationDto } from './dto/create-course.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -32,7 +32,7 @@ export class CourseController {
       storage: diskStorage({
         destination: './uploads/Course/thumbnails',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');
@@ -65,7 +65,7 @@ export class CourseController {
       storage: diskStorage({
         destination: './uploads/Course/thumbnails',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');
@@ -126,7 +126,7 @@ export class CourseController {
       storage: diskStorage({
         destination: './uploads/Course/thumbnails',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');
@@ -160,7 +160,7 @@ export class CourseController {
       storage: diskStorage({
         destination: './uploads/Course/thumbnails',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');
@@ -203,7 +203,7 @@ export class CourseController {
       storage: diskStorage({
         destination: './uploads/Course/images',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');
@@ -240,7 +240,7 @@ export class CourseController {
       storage: diskStorage({
         destination: './uploads/Course/thumbnails',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');

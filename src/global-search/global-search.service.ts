@@ -237,7 +237,7 @@ async getSearchSuggestions(keyword: string) {
   const trimmedKeyword = keyword?.trim();
   if (!trimmedKeyword) return [];
 
-  // Keyword mapping for common search terms
+
   const keywordMap = {
     't': ['tutor', 'teacher', 'training'],
     'c': ['course', 'class', 'curriculum'],
@@ -256,7 +256,7 @@ async getSearchSuggestions(keyword: string) {
   const likeKeyword = `%${trimmedKeyword}%`;
   const suggestions = [];
 
-  // Add direct keyword suggestions
+
   if (lowerKeyword.length <= 2) {
     if ('tutor'.startsWith(lowerKeyword) || 'teacher'.startsWith(lowerKeyword)) {
       suggestions.push({ id: 'tutor-type', name: 'Tutors', type: 'category' });
@@ -349,7 +349,6 @@ async getSearchSuggestions(keyword: string) {
     .filter(s => {
       if (!s.name) return false;
       const itemName = s.name.toLowerCase();
-      // Check if item matches original keyword or any mapped keywords
       return itemName.includes(trimmedKeyword.toLowerCase()) || 
              mappedKeywords.some(mk => itemName.includes(mk.toLowerCase()) || mk.toLowerCase().includes(itemName));
     })
@@ -361,14 +360,14 @@ async getSearchSuggestions(keyword: string) {
       const bName = b.name.toLowerCase();
       const keyword = trimmedKeyword.toLowerCase();
       
-      // Priority 1: Items that start with the keyword
+    
       const aStarts = aName.startsWith(keyword);
       const bStarts = bName.startsWith(keyword);
       
       if (aStarts && !bStarts) return -1;
       if (!aStarts && bStarts) return 1;
       
-      // Priority 2: Alphabetical order
+      
       return aName.localeCompare(bName);
     })
     .slice(0, 15)
@@ -439,7 +438,7 @@ async getSearchSuggestions(keyword: string) {
       
       const countries = await this.countryRepo.find({ select: ['id', 'name'] });
 
-      // 3️⃣ Merge counts
+      
       return countries.map((country) => {
         const tutor = tutorCounts.find((t) => t.countryId === country.id);
         return {

@@ -1,13 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateNoticeDto } from './dto/create-notice.dto';
-import { UpdateNoticeDto } from './dto/update-notice.dto';
 import { Notice } from './entities/notice.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BannerPaginationDto } from 'src/banner/dto/create-banner.dto';
 import { DefaultStatus } from 'src/enum';
-import { unlink } from 'fs/promises';
-import { join } from 'path';
+import { unlink } from 'node:fs/promises';
+import { join } from 'node:path';
 import { DefaultStatusDto } from 'src/common/dto/default-status.dto';
 import { DefaultStatusPaginationDto } from 'src/common/dto/default-status-pagination.dto';
 
@@ -19,15 +16,15 @@ export class NoticeService {
   ) {}
 
   async create(image: string) {
-    const obj = Object.assign({
+    const obj = {
       image: process.env.SWC_CDN_LINK + image,
       imagePath: image,
-    });
+    };
     return this.repo.save(obj);
   }
 
   async findAll(dto: DefaultStatusPaginationDto) {
-    const query = await this.repo
+    const query = this.repo
       .createQueryBuilder('notice')
       .where('notice.status = :status', {
         status: dto.status,
@@ -42,7 +39,7 @@ export class NoticeService {
   }
 
   async findByUser() {
-    const query = await this.repo
+    const query = this.repo
       .createQueryBuilder('notice')
       .where('notice.status = :status', {
         status: DefaultStatus.ACTIVE,
@@ -68,10 +65,11 @@ export class NoticeService {
         console.warn(`Failed to delete old image: ${oldPath}`, err.message);
       }
     }
-    const obj = Object.assign(result, {
+    const obj = {
+      ...result,
       image: process.env.SWC_CDN_LINK + image,
       imagePath: image,
-    });
+    };
     return this.repo.save(obj);
   }
 
@@ -80,7 +78,7 @@ export class NoticeService {
     if (!result) {
       throw new NotFoundException('Notice Not Found..');
     }
-    const obj = Object.assign(result, dto);
+    const obj = { ...result, ...dto };
     return this.repo.save(obj);
   }
 }

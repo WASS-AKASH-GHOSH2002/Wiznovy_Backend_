@@ -17,7 +17,7 @@ import { DefaultStatusDto } from 'src/common/dto/default-status.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname } from 'node:path';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { PermissionAction, UserRole, FileSizeLimit } from 'src/enum';
@@ -37,7 +37,7 @@ export class NoticeController {
       storage: diskStorage({
         destination: './uploads/Notice',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');
@@ -53,8 +53,6 @@ export class NoticeController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          // new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
-          // new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 5 }),
         ],
       }),
     )
@@ -85,7 +83,7 @@ export class NoticeController {
       storage: diskStorage({
         destination: './uploads/Notice',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');
@@ -102,8 +100,6 @@ export class NoticeController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          // new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
-          // new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 1 }),
         ],
       }),
     )

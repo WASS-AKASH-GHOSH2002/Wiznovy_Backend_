@@ -1,1 +1,3 @@
-export class CreateBoookImageDto {}
+export class CreateBoookImageDto {
+  
+}

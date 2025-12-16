@@ -47,6 +47,16 @@ export class CountryStatusDto {
   status: DefaultStatus;
 }
 
+export class BulkCountryStatusDto {
+  @IsNotEmpty()
+  @IsString({ each: true })
+  ids: string[];
+
+  @IsNotEmpty()
+  @IsEnum(DefaultStatus)
+  status: DefaultStatus;
+}
+
 export class CountryPaginationDto {
   @IsNotEmpty()
   @Type(() => Number)

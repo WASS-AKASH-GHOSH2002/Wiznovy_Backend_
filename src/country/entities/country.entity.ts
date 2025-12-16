@@ -1,7 +1,6 @@
 import { DefaultStatus } from 'src/enum';
 import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
 import { UserDetail } from 'src/user-details/entities/user-detail.entity';
-import { City } from 'src/city/entities/city.entity';
 import { State } from 'src/state/entities/state.entity';
 import {
   Column,

@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, FileTypeValidator, MaxFileSizeValidator, ParseFilePipe, UploadedFile, UseGuards, UseInterceptors, Query, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param,MaxFileSizeValidator, ParseFilePipe, UploadedFile, UseGuards, UseInterceptors, Query, Put } from '@nestjs/common';
 import { BannerService } from './banner.service';
 import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname } from 'node:path';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { DefaultStatus, PermissionAction, UserRole, FileSizeLimit } from 'src/enum';
@@ -36,7 +36,7 @@ export class BannerController {
       storage: diskStorage({
         destination: './uploads/Banners',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');
@@ -82,7 +82,6 @@ export class BannerController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          // new FileTypeValidator({ fileType: 'image/(jpeg|jpg|png)' }),
            new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
         ],
       }),
@@ -122,7 +121,7 @@ export class BannerController {
       storage: diskStorage({
         destination: './uploads/Banners',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');
@@ -158,7 +157,6 @@ export class BannerController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-         //new FileTypeValidator({ fileType: 'image/(jpeg|jpg|png)' }),
           new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 5 }),
         ],
       }),

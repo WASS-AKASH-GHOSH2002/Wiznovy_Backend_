@@ -9,7 +9,7 @@ import { Menu } from './entities/menu.entity';
 export class MenusService {
   constructor(
     @InjectRepository(Menu) private readonly repo: Repository<Menu>,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async findAll() {

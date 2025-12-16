@@ -1,14 +1,13 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Req, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body,Query, UseGuards } from '@nestjs/common';
 import { RatingService } from './rating.service';
-import { CreateRatingDto, CreateSessionReviewDto, UpdateRatingStatusDto, RatingFilterDto } from './dto/rating.dto';
+import { CreateRatingDto, CreateSessionReviewDto,  RatingFilterDto } from './dto/rating.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { Account } from 'src/account/entities/account.entity';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { PermissionAction, UserRole } from 'src/enum';
-import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
-import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
+import {  UserRole } from 'src/enum';
+
 
 @Controller('rating')
 export class RatingController {
@@ -40,20 +39,4 @@ export class RatingController {
     return this.ratingService.getSessionReviews(dto, account.id);
   }
 
-  // @Get('global-count')
-  // async getGlobalRatingSummary() {
-  //   return await this.ratingService.getGlobalRatingSummary();
-  // }
-
-  
-
-  
-
-  // @Put('status/:id')
-  // @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  // @Roles(UserRole.ADMIN, UserRole.STAFF)
-  // @CheckPermissions([PermissionAction.UPDATE, 'rating'])
-  // updateStatus(@Param('id') id: string, @Body() dto: UpdateRatingStatusDto) {
-  //   return this.ratingService.updateStatus(id, dto);
-  // }
 }

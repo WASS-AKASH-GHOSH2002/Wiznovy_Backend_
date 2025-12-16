@@ -215,44 +215,38 @@ export class CourseService {
   }
 
   async findByUser(dto: CoursePaginationDto, accountId?: string) {
+    const queryBuilder = this.buildUserCourseQuery(dto);
+    const [result, total] = await queryBuilder
+      .orderBy('course.createdAt', 'DESC')
+      .getManyAndCount();
+
+    await this.setAccessPermissions(result, accountId);
+    return { result, total };
+  }
+
+  private buildUserCourseQuery(dto: CoursePaginationDto) {
     const queryBuilder = this.repo.createQueryBuilder('course')
       .leftJoinAndSelect('course.tutor', 'tutor')
       .leftJoinAndSelect('tutor.tutorDetail', 'tutorDetail')
       .leftJoinAndSelect('course.subject', 'subject')
       .leftJoinAndSelect('course.language', 'language')
       .select([
-        'course.id',
-        'course.name',
-        'course.description',
-        'course.imageUrl',
-        'course.thumbnailUrl',
-        'course.price',
-        'course.discountPrice',
-        'course.accessType',
-        'course.totalDuration',
-        'course.totalLectures',
-        'course.validityDays',
-        'course.averageRating',
-        'course.totalRatings',
-        'course.tutorId',
-        'course.authorMessage',
-        'course.startDate',
-        'course.endDate',
-        'course.subjectId',
-        'course.languageId',
-        'course.createdAt',
-        'subject.id',
-        'subject.name',
-        'language.id',
-        'language.name',
-        'tutor.id',
-        'tutorDetail.tutorId',
-        'tutorDetail.name'
-
+        'course.id', 'course.name', 'course.description', 'course.imageUrl',
+        'course.thumbnailUrl', 'course.price', 'course.discountPrice', 'course.accessType',
+        'course.totalDuration', 'course.totalLectures', 'course.validityDays',
+        'course.averageRating', 'course.totalRatings', 'course.tutorId',
+        'course.authorMessage', 'course.startDate', 'course.endDate',
+        'course.subjectId', 'course.languageId', 'course.createdAt',
+        'subject.id', 'subject.name', 'language.id', 'language.name',
+        'tutor.id', 'tutorDetail.tutorId', 'tutorDetail.name'
       ])
-
       .where('course.status = :status', { status: CourseStatus.APPROVED });
 
+    this.applyFilters(queryBuilder, dto);
+    return queryBuilder;
+  }
+
+  private applyFilters(queryBuilder: any, dto: CoursePaginationDto) {
     if (dto.accessType) {
       queryBuilder.andWhere('course.accessType = :accessType', { accessType: dto.accessType });
     }
@@ -262,44 +256,38 @@ export class CourseService {
     if (dto.languageId) {
       queryBuilder.andWhere('course.languageId = :languageId', { languageId: dto.languageId });
     }
-    if(dto.tutorId){
+    if (dto.tutorId) {
       queryBuilder.andWhere('course.tutorId = :tutorId', { tutorId: dto.tutorId });
     }
-
     if (dto.keyword) {
       queryBuilder.andWhere('course.name LIKE :keyword OR course.description LIKE :keyword', {
         keyword: `%${dto.keyword}%`
       });
     }
+  }
 
-    const [result, total] = await queryBuilder
-      .orderBy('course.createdAt', 'DESC')
-      .getManyAndCount();
-
-    if (accountId) {
-      for (const course of result) {
-        if (course.accessType === AccessTypes.FREE) {
-          course['hasAccess'] = true;
-        } else {
-          const purchase = await this.userPurchaseRepo.findOne({
-            where: {
-              accountId,
-              courseId: course.id,
-              purchaseType: PurchaseType.COURSE,
-              paymentStatus: PaymentStatus.COMPLETED
-            }
-          });
-          course['hasAccess'] = purchase && (!purchase.expiresAt || new Date() <= purchase.expiresAt);
-        }
-      }
-    } else {
-      
-      for (const course of result) {
-        course['hasAccess'] = course.accessType === AccessTypes.FREE;
-      }
+  private async setAccessPermissions(courses: any[], accountId?: string) {
+    for (const course of courses) {
+      course['hasAccess'] = await this.checkCourseAccess(course, accountId);
     }
+  }
 
-    return { result, total };
+  private async checkCourseAccess(course: any, accountId?: string): Promise<boolean> {
+    if (course.accessType === AccessTypes.FREE) {
+      return true;
+    }
+    if (!accountId) {
+      return false;
+    }
+    const purchase = await this.userPurchaseRepo.findOne({
+      where: {
+        accountId,
+        courseId: course.id,
+        purchaseType: PurchaseType.COURSE,
+        paymentStatus: PaymentStatus.COMPLETED
+      }
+    });
+    return purchase && (!purchase.expiresAt || new Date() <= purchase.expiresAt);
   }
  
   async findOne(id: string) {
@@ -485,14 +473,14 @@ async thumbnail(img: string, result: Course) {
     let totalLectures = 0;
     let totalDurationMinutes = 0;
     
-    course.units.forEach(unit => {
+    for (const unit of course.units) {
       totalLectures += unit.videoLectures.length;
-      unit.videoLectures.forEach(lecture => {
+      for (const lecture of unit.videoLectures) {
         if (lecture.duration) {
           totalDurationMinutes += Number(lecture.duration) || 0;
         }
-      });
-    });
+      }
+    }
     
     const totalDuration = `${totalDurationMinutes} min`;
     

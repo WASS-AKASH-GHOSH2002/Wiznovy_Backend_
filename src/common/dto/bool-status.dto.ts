@@ -1,4 +1,4 @@
-import { Transform, Type } from 'class-transformer';
+
 import { IsBoolean, IsNotEmpty } from 'class-validator';
 
 export class BoolStatusDto {

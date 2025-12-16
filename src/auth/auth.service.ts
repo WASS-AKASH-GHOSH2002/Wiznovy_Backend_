@@ -1,11 +1,12 @@
 import { HttpService } from '@nestjs/axios';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { randomInt } from 'crypto';
+import { randomInt } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -31,6 +32,8 @@ import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly jwtService: JwtService,
     @InjectRepository(Account) private readonly repo: Repository<Account>,
@@ -62,7 +65,6 @@ export class AuthService {
       throw new UnauthorizedException('Invalid Credentials');
     }
     
-  //const otp = "783211";
    const otp = randomInt(100000, 1000000).toString();
     await this.cacheManager.set(`admin_login_${admin.email}`, {
       otp,
@@ -210,28 +212,31 @@ export class AuthService {
   }
 
   async sendRegistrationOtp(email: string, userData: any) {
-    const otp = randomInt(100000, 1000000).toString();
-    const userDataKey = `registration_data_${email}`;
-    const otpKey = `registration_otp_${email}`;
-    
-   
-    await this.cacheManager.set(userDataKey, userData, 0);
-    
-   
-    await this.cacheManager.set(otpKey, otp, 2 * 60 * 1000);
+  const otp = randomInt(100000, 1000000).toString();
+  const userDataKey = `registration_data_${email}`;
+  const otpKey = `registration_otp_${email}`;
 
-    try {
-      await this.nodeMailerService.sendOtpInEmail(email, otp);
-      return {
-        email: email,
-        name: userData.name,
-        message: 'OTP sent to your email for registration verification'
-      };
-    } catch (error) {
-      throw new BadRequestException('Failed to send OTP email. Please try again.');
-    }
+  await this.cacheManager.set(userDataKey, userData, 0);
+  await this.cacheManager.set(otpKey, otp, 2 * 60 * 1000);
+
+  try {
+    await this.nodeMailerService.sendOtpInEmail(email, otp);
+    return {
+      email,
+      name: userData.name,
+      message: 'OTP sent to your email for registration verification',
+    };
+  } catch (error) {
+    
+    this.logger.error(
+      `Failed to send registration OTP for email: ${email}`,
+      error.stack,
+    );
+    throw new BadRequestException(
+      'Failed to send OTP email. Please try again.',
+    );
   }
-
+}
   async resendRegistrationOtp(email: string) {
     const userDataKey = `registration_data_${email}`;
     const cachedData = await this.cacheManager.get<any>(userDataKey);
@@ -253,6 +258,7 @@ export class AuthService {
         message: 'OTP sent to your email for registration verification'
       };
     } catch (error) {
+      this.logger.error('Failed to resend registration OTP:', error);
       throw new BadRequestException('Failed to send OTP email. Please try again.');
     }
   }
@@ -342,20 +348,20 @@ export class AuthService {
         'Email does not exist. Please register first!',
       );
     }
-    //const otp = "783211";
     const otp = randomInt(100000, 1000000).toString();
     await this.cacheManager.set(dto.email, otp, 2 * 60 * 1000);
     try {
       await this.nodeMailerService.sendOtpInEmail(dto.email, otp);
       return { email: dto.email, message: 'OTP sent to your email address' };
     } catch (error) {
+      this.logger.error('Failed to send forgot password OTP:', error);
       throw new BadRequestException('Failed to send OTP email. Please try again.');
     }
   }
 
   async verifyOtp(email: string, otp: string) {
-    const storedOtp = await this.cacheManager.get(email);
-    if (!storedOtp || String(storedOtp) !== String(otp)) {
+    const storedOtp = await this.cacheManager.get<string>(email);
+    if (!storedOtp || storedOtp !== otp) {
       throw new BadRequestException('Invalid or expired OTP');
     }
     return { matched: true, message: 'OTP Matched.' };
@@ -417,7 +423,7 @@ export class AuthService {
     return result;
   };
 
-  private getUserDetails = async (
+  private readonly getUserDetails = async (
     id: string,
     role?: UserRole,
   ): Promise<any> => {
@@ -492,6 +498,7 @@ export class AuthService {
         message: 'OTP sent to your email for tutor registration verification'
       };
     } catch (error) {
+      this.logger.error('Failed to send tutor registration OTP:', error);
       throw new BadRequestException('Failed to send OTP email. Please try again.');
     }
   }
@@ -517,6 +524,7 @@ export class AuthService {
         message: 'OTP sent to your email for tutor registration verification'
       };
     } catch (error) {
+      this.logger.error('Failed to resend tutor registration OTP:', error);
       throw new BadRequestException('Failed to send OTP email. Please try again.');
     }
   }
@@ -625,8 +633,8 @@ private async generateTutorId(): Promise<string> {
 
   if (lastTutor?.tutorId) {
     
-    const lastSequence = parseInt(lastTutor.tutorId.split('/')[1]);
-    if (!isNaN(lastSequence)) {
+    const lastSequence = Number.parseInt(lastTutor.tutorId.split('/')[1], 10);
+    if (!Number.isNaN(lastSequence)) {
       sequence = lastSequence + 1; 
     }
   }

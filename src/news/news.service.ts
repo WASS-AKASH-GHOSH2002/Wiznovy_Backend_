@@ -9,8 +9,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { News } from './entities/news.entity';
 import { CommonPaginationDto } from 'src/common/dto/common-pagination.dto';
-import { unlink } from 'fs/promises';
-import { join } from 'path';
+import { unlink } from 'node:fs/promises';
+import { join } from 'node:path';
 
 @Injectable()
 export class NewsService {
@@ -78,7 +78,7 @@ export class NewsService {
     if (!result) {
       throw new NotFoundException('News not found!');
     }
-    const obj = Object.assign(result, dto);
+    const obj = { ...result, ...dto };
     return this.repo.save(obj);
   }
 

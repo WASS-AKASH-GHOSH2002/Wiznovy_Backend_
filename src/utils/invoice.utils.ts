@@ -162,7 +162,7 @@ function generateFooter(doc) {
 }
 
 function formatCurrency(amount) {
-  return `${parseFloat(amount).toFixed(2)}`;
+  return `${Number.parseFloat(amount).toFixed(2)}`;
 }
 
 function generateHr(doc, y) {

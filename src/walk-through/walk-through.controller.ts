@@ -58,7 +58,7 @@ export class WalkThroughController {
       storage: diskStorage({
         destination: './uploads/WalkThrough',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');
@@ -154,7 +154,7 @@ export class WalkThroughController {
       storage: diskStorage({
         destination: './uploads/WalkThrough',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');

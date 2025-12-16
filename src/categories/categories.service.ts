@@ -104,7 +104,7 @@ async updateStatus(id: string, dto: UpdateCategoryStatusDto) {
   
 
   async remove(id:string) {
-    const category = this.repo.findOne({where:{id}})
+    const category = await this.repo.findOne({where:{id}})
     if (!category) {
       throw new Error('Category not found');
     }

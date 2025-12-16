@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { join } from 'path';
-import { unlink } from 'fs/promises';
-import { CountryPaginationDto, CountryStatusDto, CreateCountryDto } from './dto/create-country.dto';
+import { join } from 'node:path';
+import { unlink } from 'node:fs/promises';
+import { BulkCountryStatusDto, CountryPaginationDto, CountryStatusDto, CreateCountryDto } from './dto/create-country.dto';
 import { UpdateCountryDto } from './dto/update-country.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Country } from './entities/country.entity';
@@ -100,7 +100,7 @@ async update(id: string, dto: UpdateCountryDto) {
 
 async updateStatus(id: string, dto: CountryStatusDto) {
   const result = await this.findOne(id);
-  const obj = Object.assign(result, dto);
+  const obj = { ...result, ...dto };
   return this.repo.save(obj);
 }
 
@@ -108,6 +108,11 @@ async remove(id: string) {
   const result = await this.findOne(id);
   await this.repo.remove(result);
   return { message: 'Country deleted successfully' };
+}
+
+async bulkUpdateStatus(dto: BulkCountryStatusDto) {
+  await this.repo.update(dto.ids, { status: dto.status });
+  return { message: `${dto.ids.length} countries status updated successfully` };
 }
 
 async uploadImage(imagePath: string, country: Country) {
@@ -120,7 +125,7 @@ async uploadImage(imagePath: string, country: Country) {
     }
   }
   
-  country.imageUrl = process.env.WIZNOVY_CDN_LINK + imagePath.replace(/\\/g, '/');
+  country.imageUrl = process.env.WIZNOVY_CDN_LINK + imagePath.split('\\').join('/');
   country.imagePath = imagePath;
   
   return this.repo.save(country);

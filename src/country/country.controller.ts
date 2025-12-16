@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Put, UseInterceptors, UploadedFile, ParseFilePipe } from '@nestjs/common';
 import { CountryService } from './country.service';
-import { CountryPaginationDto, CreateCountryDto } from './dto/create-country.dto';
+import { BulkCountryStatusDto, CountryPaginationDto, CreateCountryDto } from './dto/create-country.dto';
 import { UpdateCountryDto } from './dto/update-country.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -11,7 +11,7 @@ import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { GoalStatusDto } from 'src/goal/dto/create-goal.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname } from 'node:path';
 
 @Controller('country')
 export class CountryController {
@@ -70,6 +70,14 @@ export class CountryController {
     return this.countryService.remove(id);
   }
 
+  @Put('bulk-status')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'country'])
+  bulkUpdateStatus(@Body() dto: BulkCountryStatusDto) {
+    return this.countryService.bulkUpdateStatus(dto);
+  }
+
   @Put('image/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
@@ -79,7 +87,7 @@ export class CountryController {
       storage: diskStorage({
         destination: './uploads/Country/images',
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          const randomName = new Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
             .join('');

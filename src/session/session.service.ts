@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron,  } from '@nestjs/schedule';
 import { Session } from './entities/session.entity';
 import { TutorDetail } from '../tutor-details/entities/tutor-detail.entity';
 import { UserPurchase } from '../user-purchase/entities/user-purchase.entity';
@@ -9,7 +9,7 @@ import { Account } from '../account/entities/account.entity';
 import { CreateSessionDto, SessionPaginationDto } from './dto/create-session.dto';
 import { CancelSessionDto } from './dto/cancel-session.dto';
 import { RescheduleSessionDto } from './dto/reschedule-session.dto';
-import { SessionStatus, PurchaseType, PaymentStatus, SessionType, SessionDurationType } from '../enum';
+import { SessionStatus, PurchaseType, PaymentStatus, SessionType, } from '../enum';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TutorAvailabilityService } from '../tutor-availability/tutor-availability.service';
 import { NodeMailerService } from '../node-mailer/node-mailer.service';
@@ -46,8 +46,8 @@ export class SessionService {
     
     if (dto.sessionType === SessionType.TRIAL && dto.trialDuration) {
       const startTimeParts = dto.startTime.split(':');
-      const startHour = parseInt(startTimeParts[0]);
-      const startMinute = parseInt(startTimeParts[1]);
+      const startHour = Number.parseInt(startTimeParts[0]);
+      const startMinute = Number.parseInt(startTimeParts[1]);
       
       const endMinute = startMinute + dto.trialDuration;
       const endHour = startHour + Math.floor(endMinute / 60);
@@ -290,9 +290,11 @@ export class SessionService {
         user.email,
         user.userDetail?.[0]?.name || 'Student',
         tutorAccount?.tutorDetail?.[0]?.name || 'Tutor',
-        typeof session.sessionDate === 'string' ? session.sessionDate : session.sessionDate.toISOString().split('T')[0],
-        session.startTime,
-        session.endTime,
+        {
+          date: typeof session.sessionDate === 'string' ? session.sessionDate : session.sessionDate.toISOString().split('T')[0],
+          startTime: session.startTime,
+          endTime: session.endTime
+        },
         'student',
         hoursUntilSession >= 24
       );
@@ -462,12 +464,16 @@ export class SessionService {
         user.email,
         user.userDetail?.[0]?.name || 'Student',
         tutorAccount?.tutorDetail?.[0]?.name || 'Tutor',
-        typeof oldDate === 'string' ? oldDate : oldDate.toISOString().split('T')[0],
-        oldStartTime,
-        oldEndTime,
-        dto.newSessionDate,
-        dto.newStartTime,
-        dto.newEndTime,
+        {
+          date: typeof oldDate === 'string' ? oldDate : oldDate.toISOString().split('T')[0],
+          startTime: oldStartTime,
+          endTime: oldEndTime
+        },
+        {
+          date: dto.newSessionDate,
+          startTime: dto.newStartTime,
+          endTime: dto.newEndTime
+        },
         'student'
       );
     }
