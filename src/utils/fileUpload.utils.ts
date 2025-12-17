@@ -61,6 +61,7 @@ export async function uploadFileHandler(name, buffer) {
     );
     return payload.data;
   } catch (error) {
+    console.error('Error uploading file:', error);
     return { HttpCode: 405 };
   }
 }
@@ -72,6 +73,7 @@ export async function deleteFileHandler(name) {
     });
     return payload.data;
   } catch (error) {
+    console.error('Error deleting file:', error);
     return { HttpCode: 405 };
   }
 }

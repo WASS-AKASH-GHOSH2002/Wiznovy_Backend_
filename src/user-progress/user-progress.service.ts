@@ -94,14 +94,17 @@ export class UserProgressService {
 
     const records = [this.createProgressRecord(userId, 'COURSE', { courseId })];
     
+    const unitRecords = [];
     for (const unit of course.units || []) {
       if (unit?.id) {
-        records.push(this.createProgressRecord(userId, 'UNIT', { courseId, unitId: unit.id }));
-        records.push(...this.createStudyMaterialRecordsForUnit(userId, courseId, unit));
+        unitRecords.push(
+          this.createProgressRecord(userId, 'UNIT', { courseId, unitId: unit.id }),
+          ...this.createStudyMaterialRecordsForUnit(userId, courseId, unit)
+        );
       }
     }
 
-    return records;
+    return records.concat(unitRecords);
   }
 
   private async createUnitProgressRecords(userId: string, unitId: string) {
@@ -113,9 +116,9 @@ export class UserProgressService {
     if (!unit?.id) return [];
 
     const records = [this.createProgressRecord(userId, 'UNIT', { unitId })];
-    records.push(...this.createStudyMaterialRecordsForUnit(userId, undefined, unit));
+    const materialRecords = this.createStudyMaterialRecordsForUnit(userId, undefined, unit);
     
-    return records;
+    return records.concat(materialRecords);
   }
 
   private createStudyMaterialProgressRecords(userId: string, studyMaterialId: string) {

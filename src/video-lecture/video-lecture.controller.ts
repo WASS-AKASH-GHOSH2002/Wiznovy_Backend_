@@ -200,7 +200,7 @@ export class VideoLectureController {
         files: 3,
         fields: 10,
         fieldNameSize: 100,
-        fieldSize: 1048576,
+        fieldSize: 2097152,
         parts: 15
       },
     };
@@ -220,7 +220,7 @@ export class VideoLectureController {
         files: 1,
         fields: 5,
         fieldNameSize: 100,
-        fieldSize: 1048576,
+        fieldSize: 2097152,
         parts: 7
       },
     };

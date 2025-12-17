@@ -205,7 +205,13 @@ export class TutorPayoutService {
       accountId: payout.tutorId
     });
 
-    // TODO: Send email notification for payout rejection
+    // Send email notification for payout rejection
+    await this.nodeMailerService.sendAccountStatusEmail(
+      payout.tutor.email,
+      'TUTOR',
+      'PAYOUT_REJECTED',
+      `Your payout request for $${payout.amount} has been rejected. Reason: ${dto.rejectionReason}`
+    );
 
     return { message: 'Payout rejected successfully', payout };
   }

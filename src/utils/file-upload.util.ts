@@ -22,7 +22,7 @@ export class FileUploadUtil {
         files: 1,
         fields: 5,
         fieldNameSize: 100,
-        fieldSize: 1048576,
+        fieldSize: 2097152,
         parts: 7
       },
     };
@@ -45,7 +45,7 @@ export class FileUploadUtil {
         files: 2,
         fields: 10,
         fieldNameSize: 100,
-        fieldSize: 1048576,
+        fieldSize: 2097152,
         parts: 12
       },
     };

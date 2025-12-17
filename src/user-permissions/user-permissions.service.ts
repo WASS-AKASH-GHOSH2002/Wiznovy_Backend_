@@ -44,6 +44,7 @@ export class UserPermissionsService {
       this.delPermissions(dto[0].accountId);
       return this.repo.save(dto);
     } catch (error) {
+      console.error('Error updating user permissions:', error);
       throw new NotAcceptableException(
         'Something bad happened! Try after some time!',
       );
