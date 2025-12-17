@@ -14,7 +14,7 @@ interface CaslPermission {
 
 @Injectable()
 export class CaslAbilityFactory {
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
   async createForUser(user: Account): Promise<AppAbility> {
     const dbPermissions = await this.authService.findPermission(user.id);
     const caslPermissions: CaslPermission[] = dbPermissions.map((p) => ({

@@ -32,6 +32,7 @@ export class StaffDetailsService {
         const obj = Object.assign(user, dto);
         return this.repo.save(obj);
       } catch (error) {
+        console.error('Error updating existing staff detail:', error);
         throw new NotAcceptableException(
           'Either duplicate email or invalid details!',
         );
@@ -41,6 +42,7 @@ export class StaffDetailsService {
         const obj = Object.create(dto);
         return this.repo.save(obj);
       } catch (error) {
+        console.error('Error creating new staff detail:', error);
         throw new NotAcceptableException(
           'Either duplicate email or invalid details!',
         );
@@ -60,6 +62,7 @@ export class StaffDetailsService {
       const obj = Object.assign(user, dto);
       return this.repo.save(obj);
     } catch (error) {
+      console.error('Error updating staff detail:', error);
       throw new NotAcceptableException(
         'Either duplicate email/pan number/aadhar number or invalid details!',
       );

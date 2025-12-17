@@ -275,7 +275,7 @@ export class PaymentService {
   }
 
   private async handleFailedPayment(purchase: UserPurchase) {
-    const user = purchase.account;
+
     let itemName: string;
     if (purchase.sessionId) {
       itemName = 'Session Booking';

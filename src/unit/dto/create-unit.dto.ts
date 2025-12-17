@@ -1,6 +1,5 @@
 import { IsEnum, IsNotEmpty, IsOptional, IsString, IsNumber, Min, Max, MinLength, MaxLength } from 'class-validator';
 import { DefaultStatus } from 'src/enum';
-import { CommonPaginationDto } from 'src/common/dto/common-pagination.dto';
 import { Type } from 'class-transformer';
 
 export class CreateUnitDto {

@@ -64,104 +64,88 @@ export class UserProgressService {
         throw new BadRequestException('UserId, purchaseType, and itemId are required');
       }
 
-      const records = [];
-
-      if (purchaseType === PurchaseType.COURSE) {
-        const course = await this.courseRepo.findOne({
-          where: { id: itemId },
-          relations: ['units', 'units.videoLectures', 'units.videoLectures.studyMaterials', 'courseContents', 'courseContents.studyMaterial']
-        });
-
-        if (course) {
-
-          records.push({
-            userId,
-            courseId: itemId,
-            contentType: 'COURSE',
-            value: 0,
-            isCompleted: false
-          });
-
-         
-          for (const unit of course.units || []) {
-            if (unit?.id) {
-              records.push({
-                userId,
-                courseId: itemId,
-                unitId: unit.id,
-                contentType: 'UNIT',
-                value: 0,
-                isCompleted: false
-              });
-
-              for (const videoLecture of unit.videoLectures || []) {
-                for (const material of videoLecture.studyMaterials || []) {
-                  if (material?.id) {
-                    records.push({
-                      userId,
-                      courseId: itemId,
-                      unitId: unit.id,
-                      studyMaterialId: material.id,
-                      contentType: 'STUDY_MATERIAL',
-                      value: 0,
-                      isCompleted: false
-                    });
-                  }
-                }
-              }
-            }
-          }
-
-  
-
-        }
-      } else if (purchaseType === PurchaseType.UNIT) {
-        const unit = await this.unitRepo.findOne({
-          where: { id: itemId },
-          relations: ['videoLectures', 'videoLectures.studyMaterials']
-        });
-
-        if (unit?.id) {
-          records.push({
-            userId,
-            unitId: itemId,
-            contentType: 'UNIT',
-            value: 0,
-            isCompleted: false
-          });
-
-          for (const videoLecture of unit.videoLectures || []) {
-            for (const material of videoLecture.studyMaterials || []) {
-              if (material?.id) {
-                records.push({
-                  userId,
-                  unitId: itemId,
-                  studyMaterialId: material.id,
-                  contentType: 'STUDY_MATERIAL',
-                  value: 0,
-                  isCompleted: false
-                });
-              }
-            }
-          }
-        }
-      } else if (purchaseType === PurchaseType.STUDY_MATERIAL) {
-        records.push({
-          userId,
-          studyMaterialId: itemId,
-          contentType: 'STUDY_MATERIAL',
-          value: 0,
-          isCompleted: false
-        });
-      }
-
-      if (records.length > 0) {
-        return await this.repo.save(records);
-      }
-      return [];
+      const records = await this.generateProgressRecords(userId, purchaseType, itemId);
+      return records.length > 0 ? await this.repo.save(records) : [];
     } catch (error) {
       throw new BadRequestException(`Failed to create progress records: ${error.message}`);
     }
+  }
+
+  private async generateProgressRecords(userId: string, purchaseType: PurchaseType, itemId: string) {
+    switch (purchaseType) {
+      case PurchaseType.COURSE:
+        return this.createCourseProgressRecords(userId, itemId);
+      case PurchaseType.UNIT:
+        return this.createUnitProgressRecords(userId, itemId);
+      case PurchaseType.STUDY_MATERIAL:
+        return this.createStudyMaterialProgressRecords(userId, itemId);
+      default:
+        return [];
+    }
+  }
+
+  private async createCourseProgressRecords(userId: string, courseId: string) {
+    const course = await this.courseRepo.findOne({
+      where: { id: courseId },
+      relations: ['units', 'units.videoLectures', 'units.videoLectures.studyMaterials']
+    });
+
+    if (!course) return [];
+
+    const records = [this.createProgressRecord(userId, 'COURSE', { courseId })];
+    
+    for (const unit of course.units || []) {
+      if (unit?.id) {
+        records.push(this.createProgressRecord(userId, 'UNIT', { courseId, unitId: unit.id }));
+        records.push(...this.createStudyMaterialRecordsForUnit(userId, courseId, unit));
+      }
+    }
+
+    return records;
+  }
+
+  private async createUnitProgressRecords(userId: string, unitId: string) {
+    const unit = await this.unitRepo.findOne({
+      where: { id: unitId },
+      relations: ['videoLectures', 'videoLectures.studyMaterials']
+    });
+
+    if (!unit?.id) return [];
+
+    const records = [this.createProgressRecord(userId, 'UNIT', { unitId })];
+    records.push(...this.createStudyMaterialRecordsForUnit(userId, undefined, unit));
+    
+    return records;
+  }
+
+  private createStudyMaterialProgressRecords(userId: string, studyMaterialId: string) {
+    return [this.createProgressRecord(userId, 'STUDY_MATERIAL', { studyMaterialId })];
+  }
+
+  private createStudyMaterialRecordsForUnit(userId: string, courseId: string | undefined, unit: any) {
+    const records = [];
+    for (const videoLecture of unit.videoLectures || []) {
+      for (const material of videoLecture.studyMaterials || []) {
+        if (material?.id) {
+          records.push(this.createProgressRecord(userId, 'STUDY_MATERIAL', {
+            courseId,
+            unitId: unit.id,
+            studyMaterialId: material.id
+          }));
+        }
+      }
+    }
+    return records;
+  }
+
+  private createProgressRecord(userId: string, contentType: string, ids: any) {
+    return {
+      userId,
+      ...ids,
+      contentType,
+      value: 0,
+      isCompleted: false
+    };
   }
 
   async findAll(dto: UserProgressPaginationDto) {

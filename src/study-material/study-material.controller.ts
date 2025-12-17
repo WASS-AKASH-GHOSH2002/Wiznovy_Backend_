@@ -1,12 +1,38 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Query, Put, UseInterceptors, UploadedFile, ParseFilePipe, UsePipes, ValidationPipe, UploadedFiles } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Query,
+  Put,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  UsePipes,
+  ValidationPipe,
+  UploadedFiles,
+} from '@nestjs/common';
 import { StudyMaterialService } from './study-material.service';
-import { CreateStudyMaterialDto, UpdateStudyMaterialDto, StudyMaterialPaginationDto } from './dto/create-study-material.dto';
+import {
+  CreateStudyMaterialDto,
+  UpdateStudyMaterialDto,
+  StudyMaterialPaginationDto,
+} from './dto/create-study-material.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
-import { PermissionAction, UserRole, FileSizeLimit } from 'src/enum';
-import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
+import {
+  PermissionAction,
+  UserRole,
+  FileSizeLimit,
+} from 'src/enum';
+import {
+  FileInterceptor,
+  FileFieldsInterceptor,
+} from '@nestjs/platform-express';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { Account } from 'src/account/entities/account.entity';
@@ -18,43 +44,65 @@ import { randomBytes } from 'node:crypto';
 export class StudyMaterialController {
   constructor(
     private readonly studyMaterialService: StudyMaterialService,
-  ) { }
+  ) {}
 
+  /* =====================================================
+     CREATE STUDY MATERIAL (TUTOR)
+  ====================================================== */
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.TUTOR)
   @UsePipes(new ValidationPipe({ transform: true }))
   @UseInterceptors(
     FileFieldsInterceptor(
-      [{ name: 'pdf', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }],
-      StudyMaterialController.createStudyMaterialUploadConfig()
-    )
+      [
+        { name: 'pdf', maxCount: 1 },
+        { name: 'thumbnail', maxCount: 1 },
+      ],
+      StudyMaterialController.createStudyMaterialUploadConfig(),
+    ),
   )
   create(
     @Body() dto: CreateStudyMaterialDto,
-    @UploadedFiles() files: { pdf?: Express.Multer.File[]; thumbnail?: Express.Multer.File[] }
+    @UploadedFiles()
+    files: {
+      pdf?: Express.Multer.File[];
+      thumbnail?: Express.Multer.File[];
+    },
   ) {
-    return this.createStudyMaterial(dto, files);
+    return this.handleCreateStudyMaterial(dto, files);
   }
 
+  /* =====================================================
+     CREATE STUDY MATERIAL (ADMIN / STAFF)
+  ====================================================== */
   @Post('admin')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @UsePipes(new ValidationPipe({ transform: true }))
   @UseInterceptors(
     FileFieldsInterceptor(
-      [{ name: 'pdf', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }],
-      StudyMaterialController.createStudyMaterialUploadConfig()
-    )
+      [
+        { name: 'pdf', maxCount: 1 },
+        { name: 'thumbnail', maxCount: 1 },
+      ],
+      StudyMaterialController.createStudyMaterialUploadConfig(),
+    ),
   )
-  admincreate(
+  adminCreate(
     @Body() dto: CreateStudyMaterialDto,
-    @UploadedFiles() files: { pdf?: Express.Multer.File[]; thumbnail?: Express.Multer.File[] }
+    @UploadedFiles()
+    files: {
+      pdf?: Express.Multer.File[];
+      thumbnail?: Express.Multer.File[];
+    },
   ) {
-    return this.createStudyMaterial(dto, files);
+    return this.handleCreateStudyMaterial(dto, files);
   }
 
-
+  /* =====================================================
+     LISTING
+  ====================================================== */
   @Get('list')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
@@ -63,21 +111,25 @@ export class StudyMaterialController {
     return this.studyMaterialService.findAll(dto);
   }
 
-
   @Get('tutor/list')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.TUTOR)
-  tutorfindAll(@Query() dto: StudyMaterialPaginationDto) {
+  tutorFindAll(@Query() dto: StudyMaterialPaginationDto) {
     return this.studyMaterialService.findAll(dto);
   }
+
   @Get('user')
   @UseGuards(AuthGuard('jwt'))
-  findByUser(@Query() dto: StudyMaterialPaginationDto, @CurrentUser() user?: Account) {
+  findByUser(
+    @Query() dto: StudyMaterialPaginationDto,
+    @CurrentUser() user: Account,
+  ) {
     return this.studyMaterialService.findByUser(dto, user?.id);
   }
 
-
-
+  /* =====================================================
+     READ
+  ====================================================== */
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.studyMaterialService.findOne(id);
@@ -85,76 +137,125 @@ export class StudyMaterialController {
 
   @Get('read/:id')
   @UseGuards(AuthGuard('jwt'))
-  async downloadMaterial(@Param('id') id: string, @CurrentUser() user: any) {
-    const material = await this.studyMaterialService.getStudyContent(id, user?.id);
-    return material;
+  async readMaterial(
+    @Param('id') id: string,
+    @CurrentUser() user: Account,
+  ) {
+    return this.studyMaterialService.getStudyContent(id, user?.id);
   }
 
+  /* =====================================================
+     UPDATE DETAILS
+  ====================================================== */
   @Put(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'study_material'])
-  update(@Param('id') id: string, @Body() dto: UpdateStudyMaterialDto) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateStudyMaterialDto,
+  ) {
     return this.studyMaterialService.update(id, dto);
   }
-
 
   @Put('tutor/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.TUTOR)
-  tutorUpdate(@Param('id') id: string, @Body() dto: UpdateStudyMaterialDto) {
+  tutorUpdate(
+    @Param('id') id: string,
+    @Body() dto: UpdateStudyMaterialDto,
+  ) {
     return this.studyMaterialService.update(id, dto);
   }
+
+  /* =====================================================
+     PDF UPLOAD (TUTOR)
+  ====================================================== */
   @Put('pdf/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.TUTOR)
   @UseInterceptors(
-    FileInterceptor('file', StudyMaterialController.createSingleFileConfig('./uploads/StudyMaterial/pdfs', FileSizeLimit.DOCUMENT_SIZE))
+    FileInterceptor(
+      'file',
+      StudyMaterialController.createSingleFileConfig(
+        './uploads/StudyMaterial/pdfs',
+        FileSizeLimit.DOCUMENT_SIZE,
+      ),
+    ),
   )
-  async pdf(
+  uploadPdf(
     @Param('id') id: string,
-    @UploadedFile(new ParseFilePipe({ validators: [] })) file: Express.Multer.File,
+    @UploadedFile(new ParseFilePipe({ validators: [] }))
+    file: Express.Multer.File,
   ) {
     return this.handlePdfUpload(id, file);
   }
 
+  /* =====================================================
+     PDF UPLOAD (ADMIN / STAFF)
+  ====================================================== */
   @Put('admin/pdf/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'study_material'])
   @UseInterceptors(
-    FileInterceptor('file', StudyMaterialController.createSingleFileConfig('./uploads/StudyMaterial/pdfs', FileSizeLimit.DOCUMENT_SIZE))
+    FileInterceptor(
+      'file',
+      StudyMaterialController.createSingleFileConfig(
+        './uploads/StudyMaterial/pdfs',
+        FileSizeLimit.DOCUMENT_SIZE,
+      ),
+    ),
   )
-  async adminpdf(
+  adminUploadPdf(
     @Param('id') id: string,
-    @UploadedFile(new ParseFilePipe({ validators: [] })) file: Express.Multer.File,
+    @UploadedFile(new ParseFilePipe({ validators: [] }))
+    file: Express.Multer.File,
   ) {
     return this.handlePdfUpload(id, file);
   }
 
-  private async handlePdfUpload(id: string, file: Express.Multer.File) {
-    const fileData = await this.studyMaterialService.findOne(id);
-    return this.studyMaterialService.pdf(file.path, fileData);
-  }
-
-  private createStudyMaterial(dto: CreateStudyMaterialDto, files: { pdf?: Express.Multer.File[]; thumbnail?: Express.Multer.File[] }) {
-    const pdf = files.pdf?.[0];
-    const thumbnail = files.thumbnail?.[0];
+  /* =====================================================
+     PRIVATE HELPERS
+  ====================================================== */
+  private handleCreateStudyMaterial(
+    dto: CreateStudyMaterialDto,
+    files: {
+      pdf?: Express.Multer.File[];
+      thumbnail?: Express.Multer.File[];
+    },
+  ) {
+    const pdf = files?.pdf?.[0];
+    const thumbnail = files?.thumbnail?.[0];
     return this.studyMaterialService.create(dto, pdf, thumbnail);
   }
 
+  private async handlePdfUpload(
+    id: string,
+    file: Express.Multer.File,
+  ) {
+    const material = await this.studyMaterialService.findOne(id);
+    return this.studyMaterialService.pdf(file.path, material);
+  }
+
+  /* =====================================================
+     MULTER CONFIGS
+  ====================================================== */
   private static createStudyMaterialUploadConfig() {
     return {
       storage: diskStorage({
-        destination: (req, file, callback) => {
-          let dest;
-          if (file.fieldname === 'pdf') dest = './uploads/StudyMaterial/pdfs';
-          else if (file.fieldname === 'thumbnail') dest = './uploads/StudyMaterial/thumbnails';
-          callback(null, dest);
+        destination: (req, file, cb) => {
+          let dest = '';
+          if (file.fieldname === 'pdf') {
+            dest = './uploads/StudyMaterial/pdfs';
+          } else if (file.fieldname === 'thumbnail') {
+            dest = './uploads/StudyMaterial/thumbnails';
+          }
+          cb(null, dest);
         },
-        filename: (req, file, callback) => {
+        filename: (req, file, cb) => {
           const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
+          cb(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
       limits: {
@@ -163,33 +264,31 @@ export class StudyMaterialController {
         fields: 10,
         fieldNameSize: 100,
         fieldSize: 1048576,
-        parts: 12
+        parts: 12,
       },
     };
   }
 
-  private static createSingleFileConfig(destination: string, fileSize: number) {
+  private static createSingleFileConfig(
+    destination: string,
+    fileSize: number,
+  ) {
     return {
       storage: diskStorage({
         destination,
-        filename: (req, file, callback) => {
+        filename: (req, file, cb) => {
           const randomName = randomBytes(16).toString('hex');
-          return callback(null, `${randomName}${extname(file.originalname)}`);
+          cb(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
-      limits: { 
+      limits: {
         fileSize,
         files: 1,
         fields: 5,
         fieldNameSize: 100,
         fieldSize: 1048576,
-        parts: 7
+        parts: 7,
       },
     };
   }
-
-  }
-
-
-
-
+}
