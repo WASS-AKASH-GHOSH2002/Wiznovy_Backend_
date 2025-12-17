@@ -5,7 +5,6 @@ import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
 import { GlobalSearchDto } from './dto/global-search.dto';
 import { Course } from 'src/course/entities/course.entity';
 import { Book } from 'src/book/entities/book.entity';
-import { SearchHistory } from 'src/search-history/entities/search-history.entity';
 import { Subject } from 'src/subjects/entities/subject.entity';
 import { Country } from 'src/country/entities/country.entity';
 import { CourseStatus, DefaultStatus, Level } from 'src/enum';
@@ -25,8 +24,7 @@ export class GlobalSearchService {
 
         @InjectRepository(Subject)
     private readonly subjectRepo: Repository<Subject>,
-    @InjectRepository(SearchHistory)
-    private readonly searchHistoryRepo: Repository<SearchHistory>
+
   ) {}
 
 async search(dto: GlobalSearchDto, accountId?: string) {

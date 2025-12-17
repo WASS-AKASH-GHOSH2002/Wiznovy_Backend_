@@ -2,11 +2,10 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { DefaultStatus } from '../../enum';
+
 
 @Entity()
 export class Setting {

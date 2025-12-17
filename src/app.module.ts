@@ -41,7 +41,6 @@ import { CityModule } from './city/city.module';
 import { GlobalSearchModule } from './global-search/global-search.module';
 import { VideoLectureModule } from './video-lecture/video-lecture.module';
 import { BookModule } from './book/book.module';
-import { SearchHistoryModule } from './search-history/search-history.module';
 import { ClassModule } from './class/class.module';
 import { TutorAvailabilityModule } from './tutor-availability/tutor-availability.module';
 import { BoookImagesModule } from './boook-images/boook-images.module';
@@ -119,7 +118,6 @@ ConfigModule.forRoot({
     GlobalSearchModule,
     VideoLectureModule,
     BookModule,
-    SearchHistoryModule,
     ClassModule,
     TutorAvailabilityModule,
     BoookImagesModule,

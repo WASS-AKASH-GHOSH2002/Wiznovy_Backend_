@@ -1,6 +1,5 @@
 import { Unit } from 'src/unit/entities/unit.entity';
 import { StudyMaterial } from 'src/study-material/entities/study-material.entity';
-import { DefaultStatus, } from 'src/enum';
 import {
   Column,
   CreateDateColumn,

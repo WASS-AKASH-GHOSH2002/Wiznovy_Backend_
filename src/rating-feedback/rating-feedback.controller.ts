@@ -10,20 +10,19 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Account } from 'src/account/entities/account.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
-import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { BoolStatusDto } from 'src/common/dto/bool-status.dto';
-import { PermissionAction, UserRole } from 'src/enum';
+
 import {
-  FeedbackPaginationDto,
+ 
   RatingFeedbackDto,
 } from './dto/rating-feedback.dto';
 import { RatingFeedbackService } from './rating-feedback.service';
+import { UserRole } from 'src/enum';
 
 @Controller('rating-feedback')
 export class RatingFeedbackController {

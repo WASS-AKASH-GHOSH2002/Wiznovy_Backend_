@@ -7,8 +7,7 @@ import { Course } from 'src/course/entities/course.entity';
 import { VideoLecture } from 'src/video-lecture/entities/video-lecture.entity';
 import { StudyMaterial } from 'src/study-material/entities/study-material.entity';
 import { CreateUnitDto, UpdateUnitDto, UnitPaginationDto } from './dto/create-unit.dto';
-import { AddContentToUnitDto } from './dto/unit-content.dto';
-import { AccessTypes, PurchaseType } from 'src/enum';
+
 import { join } from 'node:path';
 import { unlink } from 'node:fs/promises';
 
@@ -252,8 +251,6 @@ export class UnitService {
     return this.repo.save(result);
   }
 
-
-
   async image(image: string, result: Unit) {
     if (result.imgPath) {
       const oldPath = join(__dirname, '..', '..', result.imgPath);
@@ -268,14 +265,5 @@ export class UnitService {
       imgPath: image,
     });
     return this.repo.save(obj);
-  }
-
-  async updateStatus(id: string, dto: UpdateUnitDto) {
-    const result = await this.repo.findOne({ where: { id } });
-    if (!result) {
-      throw new NotFoundException('Unit not found!');
-    }
-    Object.assign(result, dto);
-    return this.repo.save(result);
   }
 }

@@ -1,7 +1,6 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards, Query, Put, UseInterceptors, UploadedFile, UploadedFiles, ParseFilePipe, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body,  Param, UseGuards, Query, Put, UseInterceptors, UploadedFile, UploadedFiles, ParseFilePipe, UsePipes, ValidationPipe } from '@nestjs/common';
 import { UnitService } from './unit.service';
 import { CreateUnitDto, UpdateUnitDto, UnitPaginationDto } from './dto/create-unit.dto';
-import { AddContentToUnitDto } from './dto/unit-content.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -174,6 +173,6 @@ export class UnitController {
   @Roles(UserRole.ADMIN, UserRole.STAFF,UserRole.TUTOR)
  // @CheckPermissions([PermissionAction.UPDATE, 'unit'])
   status(@Param('id') id: string, @Body() dto: UpdateUnitDto) {
-    return this.unitService.updateStatus(id, dto);
+    return this.unitService.update(id, dto);
   }
 }

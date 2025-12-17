@@ -4,17 +4,14 @@ import { Country } from 'src/country/entities/country.entity';
 import { Gender, Level } from 'src/enum';
 import { Language } from 'src/languages/entities/language.entity';
 import { Qualification } from 'src/qualification/entities/qualification.entity';
-import { Rating } from 'src/rating/entities/rating.entity';
 import { State } from 'src/state/entities/state.entity';
 import { Subject } from 'src/subjects/entities/subject.entity';
-import { TutorAvailability } from 'src/tutor-availability/entities/tutor-availability.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
-  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,

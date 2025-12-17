@@ -10,11 +10,8 @@ import {
   UseInterceptors,
   UploadedFile,
   ParseFilePipe,
-  FileTypeValidator,
-  MaxFileSizeValidator,
   Query,
   Put,
-  HttpStatus,
 } from '@nestjs/common';
 import { WalkThroughService } from './walk-through.service';
 import {
@@ -30,8 +27,7 @@ import { extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { DefaultStatus, PermissionAction, UserRole, FileSizeLimit } from 'src/enum';
-import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
+import { DefaultStatus, UserRole, FileSizeLimit } from 'src/enum';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import {
   ApiTags,

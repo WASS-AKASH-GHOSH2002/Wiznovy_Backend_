@@ -4,15 +4,12 @@ import {
   MinLength,
   MaxLength,
   IsOptional,
-  IsNotEmpty,
-  IsNumber,
-  Max,
-  Min,
+ 
   IsEnum,
   IsDate,
 } from 'class-validator';
 import { Gender, Level, } from 'src/enum';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {  ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateUserDetailDto {
   @ApiPropertyOptional({ example: 'John Doe', minLength: 1, maxLength: 50 })

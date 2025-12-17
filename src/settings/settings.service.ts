@@ -2,7 +2,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cache } from 'cache-manager';
-import { Like, Repository } from 'typeorm';
+import {  Repository } from 'typeorm';
 import { SettingDto } from './dto/setting.dto';
 import { Setting } from './entities/setting.entity';
 import { unlink } from 'node:fs/promises';

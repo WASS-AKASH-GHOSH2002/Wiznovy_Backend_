@@ -18,6 +18,7 @@ export async function sendOtp(phone: number, otp: number) {
       return null;
     }
   } catch (error) {
+    console.error('Failed to send OTP SMS:', error);
     return null;
   }
 }
@@ -38,6 +39,7 @@ export async function sendSMS(phone: number, message: string) {
       return null;
     }
   } catch (error) {
+    console.error('Failed to send SMS:', error);
     return null;
   }
 }

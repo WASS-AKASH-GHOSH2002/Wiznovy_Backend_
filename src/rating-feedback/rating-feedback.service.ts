@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { BoolStatusDto } from 'src/common/dto/bool-status.dto';
 import { Brackets, Repository } from 'typeorm';
 import {
-  FeedbackPaginationDto,
   RatingFeedbackDto,
 } from './dto/rating-feedback.dto';
 import { RatingFeedback } from './entities/rating-feedback.entity';

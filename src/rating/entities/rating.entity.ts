@@ -1,8 +1,7 @@
 import { Account } from 'src/account/entities/account.entity';
-import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
 import { Course } from 'src/course/entities/course.entity';
 import { Session } from 'src/session/entities/session.entity';
-import { RatingStatus } from 'src/enum';
+
 import {
   Column,
   CreateDateColumn,

@@ -1,7 +1,6 @@
 import { IsEnum, IsNotEmpty, IsOptional, IsString, IsNumber, Min, Max } from 'class-validator';
-import { DefaultStatus, AccessTypes } from 'src/enum';
-import { CommonPaginationDto } from 'src/common/dto/common-pagination.dto';
 import { Type } from 'class-transformer';
+import { AccessTypes } from 'src/enum';
 
 export class CreateVideoLectureDto {
   @IsNotEmpty()

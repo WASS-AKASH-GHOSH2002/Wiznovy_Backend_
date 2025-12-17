@@ -1,6 +1,4 @@
 import {
-  IsEnum,
-  IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,

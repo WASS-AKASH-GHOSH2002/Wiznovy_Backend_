@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { TutorAvailabilityService } from './tutor-availability.service';
-import { CreateAvailabilityDto, AvailabilityPaginationDto, TutorSlotDto } from './dto/create-availability.dto';
+import { CreateAvailabilityDto, AvailabilityPaginationDto, } from './dto/create-availability.dto';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { Account } from 'src/account/entities/account.entity';
 import { UserRole } from 'src/enum';

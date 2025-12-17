@@ -6,7 +6,7 @@ import { TutorDetail } from '../tutor-details/entities/tutor-detail.entity';
 import { UserPurchase } from '../user-purchase/entities/user-purchase.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateFixedSessionDto, FixedSessionPaginationDto } from './dto/create-fixed-session.dto';
-import { SessionStatus, PurchaseType, PaymentStatus, TimeSlot, NotificationType } from '../enum';
+import { SessionStatus,  PaymentStatus, TimeSlot, NotificationType } from '../enum';
 
 @Injectable()
 export class FixedSessionService {

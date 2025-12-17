@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Query, UseGuards, UseInterceptors, UploadedFile, UploadedFiles, ParseFilePipe, Patch, UsePipes, ValidationPipe, MaxFileSizeValidator, } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Query, UseGuards, UseInterceptors, UploadedFile, UploadedFiles, ParseFilePipe, Patch, UsePipes, ValidationPipe } from '@nestjs/common';
 import { CourseService } from './course.service';
 import { CreateCourseDto, UpdateCourseDto, CoursePaginationDto } from './dto/create-course.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -12,7 +12,7 @@ import { diskStorage } from 'multer';
 import { extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { CourseStatusDto } from './dto/course-status.dto';
-import { DeleteCourseDto } from './dto/delete-course.dto';
+
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { courseImageFileFilter } from '../utils/fileUpload.utils';

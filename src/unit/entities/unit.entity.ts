@@ -1,4 +1,4 @@
-import { Subject } from 'src/subjects/entities/subject.entity';
+
 import { Course } from 'src/course/entities/course.entity';
 import { DefaultStatus } from 'src/enum';
 import {

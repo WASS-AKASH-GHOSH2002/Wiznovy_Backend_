@@ -1,7 +1,6 @@
 import { VideoLecture } from 'src/video-lecture/entities/video-lecture.entity';
 import { UserProgress } from 'src/user-progress/entities/user-progress.entity';
 import { Unit } from 'src/unit/entities/unit.entity';
-import {  AccessTypes } from 'src/enum';
 import {
   Column,
   CreateDateColumn,

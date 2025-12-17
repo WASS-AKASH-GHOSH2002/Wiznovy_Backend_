@@ -3,7 +3,7 @@ import {
   Controller,
   Get,
   MaxFileSizeValidator,
-  FileTypeValidator,
+
   Param,
   ParseFilePipe,
   Patch,

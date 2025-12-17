@@ -1,9 +1,9 @@
-import { Account } from 'src/account/entities/account.entity';
+
 import {
   Column,
   CreateDateColumn,
   Entity,
-  ManyToOne,
+
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsUUID, IsOptional, IsDateString, IsNumber, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, IsUUID, IsOptional, IsDateString, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SessionType, SessionDurationType } from '../../enum';
 

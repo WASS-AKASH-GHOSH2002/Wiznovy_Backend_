@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsUUID, IsString, IsOptional, IsNumber, Min, Max, MinLength, MaxLength } from 'class-validator';
+import {IsString, IsOptional, IsNumber, Min, Max, MinLength, MaxLength } from 'class-validator';
 
 export class MarkProgressDto {
   @IsString()
