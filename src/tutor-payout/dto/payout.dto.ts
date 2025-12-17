@@ -5,7 +5,7 @@ import { Type } from 'class-transformer';
 import { PaymentMethod, PayoutStatus } from 'src/enum';
 
 export class CreatePayoutDto {
-  @ApiProperty({ example: 100.50 })
+  @ApiProperty({ example: 100.5 })
   @IsNotEmpty()
   @IsNumber()
   @Min(10)

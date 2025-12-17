@@ -1,6 +1,5 @@
 import { IsEnum, IsNotEmpty, IsOptional, IsString, IsNumber } from 'class-validator';
-import { PaymentStatus } from 'src/enum';
-import { PurchaseType } from 'src/enum';
+import { PaymentStatus, PurchaseType } from 'src/enum';
 import { CommonPaginationDto } from 'src/common/dto/common-pagination.dto';
 import { Type } from 'class-transformer';
 

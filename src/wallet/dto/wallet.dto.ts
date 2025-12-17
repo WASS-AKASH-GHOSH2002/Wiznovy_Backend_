@@ -3,7 +3,7 @@ import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-v
 import { TransactionType } from '../entities/wallet.entity';
 
 export class AddFundsDto {
-  @ApiProperty({ example: 100.50 })
+  @ApiProperty({ example: 100.5 })
   @IsNotEmpty()
   @IsNumber()
   @Min(1)
@@ -21,7 +21,7 @@ export class AddFundsDto {
 }
 
 export class WithdrawFundsDto {
-  @ApiProperty({ example: 50.00 })
+  @ApiProperty({ example: 50 })
   @IsNotEmpty()
   @IsNumber()
   @Min(1)

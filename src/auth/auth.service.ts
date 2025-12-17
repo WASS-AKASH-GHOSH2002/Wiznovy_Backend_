@@ -524,6 +524,7 @@ export class AuthService {
   }
 private async generateTutorId(): Promise<string> {
   const today = new Date();
+  // eslint-disable-next-line sonarjs/prefer-string-replace-all
   const dateStr = today.toLocaleDateString('en-CA').replace(/-/g, '');
   const prefix = 'WIZ';
 

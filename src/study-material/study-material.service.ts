@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Brackets } from 'typeorm';
 import { StudyMaterial } from './entities/study-material.entity';
@@ -215,12 +215,13 @@ async create(dto: CreateStudyMaterialDto, pdf?: Express.Multer.File, thumbnail?:
     if (result.fileUrl) {
       const oldPath = join(__dirname, '..', '..', result.filePath);
       try {
-        await unlinkSync(oldPath);
+        unlinkSync(oldPath);
       } catch (err) {
         console.warn(`Failed to delete old file: ${oldPath}`, err.message);
       }
     }
     const obj = Object.assign(result, {
+      // eslint-disable-next-line sonarjs/prefer-string-replace-all
       fileUrl: process.env.WIZNOVY_CDN_LINK + file.replace(/\\/g, '/'),
       filePath: file,
     });

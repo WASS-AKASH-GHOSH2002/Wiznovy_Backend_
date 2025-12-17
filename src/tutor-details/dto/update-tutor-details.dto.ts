@@ -4,15 +4,11 @@ import {
   MinLength,
   MaxLength,
   IsOptional,
-  IsNotEmpty,
-  IsNumber,
-  Max,
-  Min,
   IsEnum,
   IsDate,
 } from 'class-validator';
 import { Gender, Level } from 'src/enum';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateTutorDetailDto {
   @ApiPropertyOptional({ example: 'John Smith', minLength: 1, maxLength: 50 })
@@ -45,7 +41,7 @@ export class UpdateTutorDetailDto {
   address: string;
 
    @IsOptional()
-  hourlyRate: Number;
+  hourlyRate: number;
 
   @ApiPropertyOptional({ example: 'Experienced tutor with 5+ years of teaching', maxLength: 1000 })
   @IsOptional()
