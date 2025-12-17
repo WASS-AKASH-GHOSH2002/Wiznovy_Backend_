@@ -8,7 +8,7 @@ import { CreateSearchHistoryDto } from './dto/create-search-history.dto';
 export class SearchHistoryService {
   constructor(
     @InjectRepository(SearchHistory)
-    private searchHistoryRepository: Repository<SearchHistory>,
+    private readonly searchHistoryRepository: Repository<SearchHistory>,
   ) {}
 
   async create(dto: CreateSearchHistoryDto) {

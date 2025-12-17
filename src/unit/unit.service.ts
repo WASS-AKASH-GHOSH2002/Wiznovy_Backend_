@@ -9,8 +9,8 @@ import { StudyMaterial } from 'src/study-material/entities/study-material.entity
 import { CreateUnitDto, UpdateUnitDto, UnitPaginationDto } from './dto/create-unit.dto';
 import { AddContentToUnitDto } from './dto/unit-content.dto';
 import { AccessTypes, PurchaseType } from 'src/enum';
-import { join } from 'path';
-import { unlink } from 'fs/promises';
+import { join } from 'node:path';
+import { unlink } from 'node:fs/promises';
 
 
 @Injectable()
@@ -270,7 +270,7 @@ export class UnitService {
     return this.repo.save(obj);
   }
 
-  async status(id: string, dto: UpdateUnitDto) {
+  async updateStatus(id: string, dto: UpdateUnitDto) {
     const result = await this.repo.findOne({ where: { id } });
     if (!result) {
       throw new NotFoundException('Unit not found!');

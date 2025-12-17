@@ -6,7 +6,7 @@ import { LoginType } from 'src/enum';
 
 @Injectable()
 export class AppleStrategy extends PassportStrategy(Strategy, 'apple') {
-  constructor(private authService: AuthService) {
+  constructor(private readonly authService: AuthService) {
     super({
       clientID: process.env.APPLE_CLIENT_ID,
       teamID: process.env.APPLE_TEAM_ID,

@@ -113,18 +113,7 @@ export class UserProgressService {
           }
 
   
-          // for (const content of course.courseContents || []) {
-          //   if (content.studyMaterial?.id) {
-          //     records.push({
-          //       userId,
-          //       courseId: itemId,
-          //       studyMaterialId: content.studyMaterial.id,
-          //       contentType: 'STUDY_MATERIAL',
-          //       value: 0,
-          //       isCompleted: false
-          //     });
-          //   }
-          // }
+
         }
       } else if (purchaseType === PurchaseType.UNIT) {
         const unit = await this.unitRepo.findOne({

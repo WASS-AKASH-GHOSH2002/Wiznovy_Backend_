@@ -174,6 +174,6 @@ export class UnitController {
   @Roles(UserRole.ADMIN, UserRole.STAFF,UserRole.TUTOR)
  // @CheckPermissions([PermissionAction.UPDATE, 'unit'])
   status(@Param('id') id: string, @Body() dto: UpdateUnitDto) {
-    return this.unitService.status(id, dto);
+    return this.unitService.updateStatus(id, dto);
   }
 }

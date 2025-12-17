@@ -53,22 +53,12 @@ export class NotificationsController {
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.CREATE, 'notification'])
   async single(@Body() body: NotificationDto) {
-    // const res = await this.notificationsService.sendBulkNotification(
-    //   body.desc,
-    //   body.title,
-    //   body.deviceId,
-    //   false,
-    // );
-    // if (res && res.success == 1) {
     return this.notificationsService.create({
       title: body.title,
       desc: body.desc,
       type: body.type,
       accountId: body.accountId,
     });
-    // } else {
-    //   throw new NotAcceptableException('Try after some time!');
-    // }
   }
 
   @Post('multi')

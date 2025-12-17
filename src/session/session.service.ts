@@ -254,9 +254,9 @@ export class SessionService {
     const now = new Date();
     const hoursUntilSession = (sessionDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-    // if (hoursUntilSession < 2) {
-    //   throw new BadRequestException('Sessions cannot be cancelled less than 2 hours before start time');
-    // }
+    if (hoursUntilSession < 2) {
+      throw new BadRequestException('Sessions cannot be cancelled less than 2 hours before start time');
+    }
 
     session.status = SessionStatus.CANCELLED;
     session.cancelledAt = new Date();

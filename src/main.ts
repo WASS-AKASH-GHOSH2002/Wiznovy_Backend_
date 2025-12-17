@@ -9,8 +9,7 @@ import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  
-  
+
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
   const config = new DocumentBuilder()
@@ -29,9 +28,8 @@ async function bootstrap() {
   });
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
-  
+
   app.enableCors();
   await app.listen(process.env.SERVER_PORT || '3000');
-  
 }
 bootstrap();

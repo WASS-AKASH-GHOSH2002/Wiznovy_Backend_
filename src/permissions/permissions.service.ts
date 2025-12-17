@@ -9,7 +9,7 @@ import { Permission } from './entities/permission.entity';
 export class PermissionsService {
   constructor(
     @InjectRepository(Permission) private readonly repo: Repository<Permission>,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async findAll() {

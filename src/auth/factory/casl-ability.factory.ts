@@ -1,10 +1,10 @@
-import { Ability } from '@casl/ability';
+import { createMongoAbility, MongoAbility } from '@casl/ability';
 import { Injectable } from '@nestjs/common';
 import { Account } from 'src/account/entities/account.entity';
 import { PermissionAction } from 'src/enum';
 import { AuthService } from '../auth.service';
-export type PermissionObjectType = any;
-export type AppAbility = Ability<[PermissionAction, PermissionObjectType]>;
+
+export type AppAbility = MongoAbility<[PermissionAction, any]>;
 interface CaslPermission {
   action: PermissionAction;
   // In our database, Invoice, Project... are called "object"
@@ -21,7 +21,7 @@ export class CaslAbilityFactory {
       action: p['permission']['name'],
       subject: p['menu']['name'],
     }));
-    return new Ability<[PermissionAction, PermissionObjectType]>(
+    return createMongoAbility<[PermissionAction, any]>(
       caslPermissions,
     );
   }

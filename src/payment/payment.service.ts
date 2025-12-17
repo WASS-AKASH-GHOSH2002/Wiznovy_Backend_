@@ -11,7 +11,7 @@ import { NodeMailerService } from '../node-mailer/node-mailer.service';
 
 @Injectable()
 export class PaymentService {
-  private stripe: Stripe;
+  private readonly stripe: Stripe;
 
   constructor(
     @InjectRepository(UserPurchase)
@@ -243,8 +243,14 @@ export class PaymentService {
 
   private async handleSuccessfulPayment(purchase: UserPurchase, paymentIntent: Stripe.PaymentIntent) {
     const user = purchase.account;
-    const userName = user?.userDetail?.[0]?.name || 'Student';
-    const itemName = purchase.sessionId ? 'Session Booking' : purchase.courseId ? 'Course Purchase' : 'Purchase';
+    let itemName: string;
+    if (purchase.sessionId) {
+      itemName = 'Session Booking';
+    } else if (purchase.courseId) {
+      itemName = 'Course Purchase';
+    } else {
+      itemName = 'Purchase';
+    }
 
     if (user?.email) {
       await this.nodeMailerService.purchaseSuccessEmail(
@@ -270,7 +276,14 @@ export class PaymentService {
 
   private async handleFailedPayment(purchase: UserPurchase) {
     const user = purchase.account;
-    const itemName = purchase.sessionId ? 'Session Booking' : purchase.courseId ? 'Course Purchase' : 'Purchase';
+    let itemName: string;
+    if (purchase.sessionId) {
+      itemName = 'Session Booking';
+    } else if (purchase.courseId) {
+      itemName = 'Course Purchase';
+    } else {
+      itemName = 'Purchase';
+    }
 
     await this.notificationsService.notifyPaymentFailed(
       purchase.accountId,
@@ -288,7 +301,7 @@ export class PaymentService {
   async createRefund(paymentIntentId: string, amount?: number, reason?: string) {
     this.checkStripeAvailability();
     try {
-      const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
+      await this.stripe.paymentIntents.retrieve(paymentIntentId);
       
       const charges = await this.stripe.charges.list({
         payment_intent: paymentIntentId,

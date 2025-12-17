@@ -22,7 +22,7 @@ export class FileUploadErrorFilter implements ExceptionFilter {
     } else if (exception.code === 'LIMIT_FILE_COUNT') {
       status = HttpStatus.BAD_REQUEST;
       message = 'Too many files uploaded.';
-    } else if (exception.message && exception.message.includes('large content')) {
+    } else if (exception.message?.includes('large content')) {
       status = HttpStatus.PAYLOAD_TOO_LARGE;
       message = 'Request entity too large. Please reduce file size or content length.';
     }

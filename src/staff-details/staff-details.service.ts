@@ -29,13 +29,17 @@ export class StaffDetailsService {
 
     if (user) {
       try {
-        if (user) {
-          const obj = Object.assign(user, dto);
-          return this.repo.save(obj);
-        } else {
-          const obj = Object.create(dto);
-          return this.repo.save(obj);
-        }
+        const obj = Object.assign(user, dto);
+        return this.repo.save(obj);
+      } catch (error) {
+        throw new NotAcceptableException(
+          'Either duplicate email or invalid details!',
+        );
+      }
+    } else {
+      try {
+        const obj = Object.create(dto);
+        return this.repo.save(obj);
       } catch (error) {
         throw new NotAcceptableException(
           'Either duplicate email or invalid details!',

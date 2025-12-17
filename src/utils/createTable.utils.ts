@@ -91,7 +91,6 @@ function generateSkills(doc, userSkills) {
 
 function generatePreferences(doc, userData) {
   const {
-    // prefferdJobRegion,
     userPreffLang,
     userPreffShift,
     userPreffWorkplace,
@@ -99,14 +98,6 @@ function generatePreferences(doc, userData) {
   } = userData;
 
   doc.fontSize(16).text('Preferences', { underline: true }).moveDown(0.5);
-
-  // if (prefferdJobRegion?.length > 0) {
-  //   doc.fontSize(12).text('Preferred Job Regions:');
-  //   prefferdJobRegion.forEach((region) => {
-  //     doc.text(`• ${region.name}`);
-  //   });
-  //   doc.moveDown();
-  // }
 
   if (userPreffLang?.length > 0) {
     doc.fontSize(12).text('Preferred Languages:');

@@ -107,7 +107,6 @@ function generateInvoiceTable(doc, invoice, y) {
   );
 
   let taxPosition = position + lineSpacing;
-  // taxPosition += invoice.tax.length * lineSpacing + 20;
 
   doc.font('Helvetica-Bold');
   generateAlignedText(

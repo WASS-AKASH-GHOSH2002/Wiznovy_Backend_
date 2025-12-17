@@ -4,8 +4,8 @@ import { Account } from 'src/account/entities/account.entity';
 import { Repository } from 'typeorm';
 import { UpdateUserDetailDto } from './dto/update-user-details.dto';
 import { UserDetail } from './entities/user-detail.entity';
-import { unlink } from 'fs/promises';
-import { join } from 'path';
+import { unlink } from 'node:fs/promises';
+import { join } from 'node:path';
 
 @Injectable()
 export class UserDetailsService {

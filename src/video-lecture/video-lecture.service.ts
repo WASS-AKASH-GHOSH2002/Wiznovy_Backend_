@@ -6,8 +6,8 @@ import { CreateVideoLectureDto, Filter, UpdateVideoLectureDto, VideoLecturePagin
 import { Unit } from 'src/unit/entities/unit.entity';
 import { Course } from 'src/course/entities/course.entity';
 import { CourseService } from 'src/course/course.service';
-import { join } from 'path';
-import { unlinkSync } from 'fs';
+import { join } from 'node:path';
+import { unlinkSync } from 'node:fs';
 
 @Injectable()
 export class VideoLectureService {
@@ -195,7 +195,7 @@ export class VideoLectureService {
     if (result.videoPath) {
       const oldPath = join(__dirname, '..', '..', result.videoPath);
       try {
-        await unlinkSync(oldPath);
+        unlinkSync(oldPath);
       } catch (err) {
         console.warn(`Failed to delete old video: ${oldPath}`, err.message);
       }
@@ -211,7 +211,7 @@ export class VideoLectureService {
     if (result.thumbnailPath) {
       const oldPath = join(__dirname, '..', '..', result.thumbnailPath);
       try {
-        await unlinkSync(oldPath);
+        unlinkSync(oldPath);
       } catch (err) {
         console.warn(`Failed to delete old thumbnail: ${oldPath}`, err.message);
       }

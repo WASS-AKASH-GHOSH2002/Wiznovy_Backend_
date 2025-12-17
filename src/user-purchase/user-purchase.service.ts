@@ -111,7 +111,7 @@ export class UserPurchaseService {
       purchase.amount
     );
 
-  //  await this.unlockAllCourseContent(purchase.accountId, purchase.courseId, paymentId);
+
 
     return {
       success: true,
@@ -119,61 +119,7 @@ export class UserPurchaseService {
     };
   }
 
- 
-  // private async unlockAllCourseContent(accountId: string, courseId: string, transactionId: string) {
-  //   const course = await this.courseRepo.findOne({
-  //     where: { id: courseId },
-  //     relations: ['units', 'units.studyMaterials', 'units.videoLectures'],
-  //   });
 
-  //   if (!course) return;
-
-  //   const unlockList: Partial<UserPurchase>[] = [];
-  //   const expiryDate = this.calculateExpiryDate(course.validityDays || 365);
-
-  //   for (const unit of course.units || []) {
-     
-  //     unlockList.push({
-  //       accountId,
-  //       purchaseType: PurchaseType.UNIT,
-  //       unitId: unit.id,
-  //       amount: 0,
-  //       paymentStatus: PaymentStatus.COMPLETED,
-  //       transactionId: `${transactionId}_UNIT_${unit.id}`,
-  //       expiresAt: expiryDate,
-  //     });
-
-      
-  //     for (const study of unit.studyMaterials || []) {
-  //       unlockList.push({
-  //         accountId,
-  //         purchaseType: PurchaseType.STUDY_MATERIAL,
-  //         studyMaterialId: study.id,
-  //         amount: 0,
-  //         paymentStatus: PaymentStatus.COMPLETED,
-  //         transactionId: `${transactionId}_STUDY_${study.id}`,
-  //         expiresAt: expiryDate,
-  //       });
-  //     }
-
-    
-  //     for (const video of unit.videoLectures || []) {
-  //       unlockList.push({
-  //         accountId,
-  //         purchaseType: PurchaseType.VIDEO_LECTURE,
-  //         videoLectureId: video.id,
-  //         amount: 0,
-  //         paymentStatus: PaymentStatus.COMPLETED,
-  //         transactionId: `${transactionId}_VIDEO_${video.id}`,
-  //         expiresAt: expiryDate,
-  //       });
-  //     }
-  //   }
-
-  //   if (unlockList.length > 0) {
-  //     await this.repo.save(unlockList);
-  //   }
-  // }
 
   /**
    * 🕓 Helper — calculate expiry date
