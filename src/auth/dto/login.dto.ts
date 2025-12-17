@@ -66,7 +66,7 @@ export class UserLoginDto {
   @IsNotEmpty()
   password: string;
 
-  @ApiPropertyOptional({ example: '192.168.1.1' })
+  @ApiPropertyOptional({ example: '' })
   @IsOptional()
   @IsString()
   ip: string;
@@ -93,7 +93,7 @@ export class UserRegisterDto {
   @MaxLength(50)
   name: string;
 
-   @ApiPropertyOptional({ example: '192.168.1.1' })
+   @ApiPropertyOptional({ example: '' })
   @IsOptional()
   @IsString()
   ip: string;

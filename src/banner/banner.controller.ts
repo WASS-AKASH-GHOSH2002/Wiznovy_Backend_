@@ -4,6 +4,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { randomBytes } from 'node:crypto';
+import { extname } from 'node:path';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { DefaultStatus, PermissionAction, UserRole, FileSizeLimit } from 'src/enum';
@@ -25,19 +26,13 @@ import {
 @ApiBearerAuth('JWT-auth')
 @Controller('banner')
 export class BannerController {
-  constructor(private readonly bannerService: BannerService) {}
-
-  @Post()
-  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.CREATE, 'banner'])
-  @UseInterceptors(
-    FileInterceptor('file', {
+  private static getStorageConfig() {
+    return {
       storage: diskStorage({
         destination: './uploads/Banners',
         filename: (req, file, callback) => {
           const randomName = randomBytes(16).toString('hex');
-          return callback(null, randomName);
+          return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
       limits: {
@@ -45,8 +40,16 @@ export class BannerController {
         files: 1,
         fields: 5
       },
-    }),
-  )
+    };
+  }
+
+  constructor(private readonly bannerService: BannerService) {}
+
+  @Post()
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.CREATE, 'banner'])
+  @UseInterceptors(FileInterceptor('file', BannerController.getStorageConfig()))
   @ApiOperation({ summary: 'Create new banner' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -115,22 +118,7 @@ export class BannerController {
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'banner'])
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/Banners',
-        filename: (req, file, callback) => {
-          const randomName = randomBytes(16).toString('hex');
-          return callback(null, randomName);
-        },
-      }),
-      limits: {
-        fileSize: FileSizeLimit.IMAGE_SIZE,
-        files: 1,
-        fields: 5
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', BannerController.getStorageConfig()))
   @ApiOperation({ summary: 'Update banner image' })
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
