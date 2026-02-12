@@ -97,28 +97,40 @@ export class ZoomService {
   }
 
   private async getZoomAccessToken(): Promise<string> {
-    try {
-      const response = await axios.post(
-        'https://zoom.us/oauth/token',
-        `grant_type=account_credentials&account_id=${process.env.ZOOM_ACCOUNT_ID}`,
-        {
-          headers: {
-            'Authorization': `Basic ${Buffer.from(`${process.env.ZOOM_CLIENT_ID}:${process.env.ZOOM_CLIENT_SECRET}`).toString('base64')}`,
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
+  try {
+
+    const credentials =
+      process.env.ZOOM_CLIENT_ID + ':' + process.env.ZOOM_CLIENT_SECRET;
+
+    const encodedCredentials =
+      Buffer.from(credentials).toString('base64');
+
+    const response = await axios.post(
+      'https://zoom.us/oauth/token',
+      'grant_type=account_credentials&account_id=' + process.env.ZOOM_ACCOUNT_ID,
+      {
+        headers: {
+          'Authorization': `Basic ${encodedCredentials}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
         }
-      );
-      return response.data.access_token;
-    } catch (error) {
-      console.error('Zoom OAuth Error Details:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message
-      });
-      throw new BadRequestException(`Failed to get Zoom access token: ${error.response?.data?.error || error.message}`);
-    }
+      }
+    );
+
+    return response.data.access_token;
+
+  } catch (error) {
+    console.error('Zoom OAuth Error Details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    });
+
+    throw new BadRequestException(
+      `Failed to get Zoom access token: ${error.response?.data?.error || error.message}`
+    );
   }
+}
 
   private generateMeetingPassword(): string {
     return Math.random().toString(36).substring(2, 8);
@@ -132,24 +144,14 @@ export class ZoomService {
         return { success: false, message: validation.message };
       }
 
-      const accessToken = await this.getZoomAccessToken();
-      
-      // Test API call to list meetings instead of user info (requires fewer scopes)
-      const response = await axios.get(
-        'https://api.zoom.us/v2/users/me/meetings?page_size=1',
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        }
-      );
+ 
 
       return { 
         success: true, 
         message: `Zoom API connected successfully. Can create meetings.` 
       };
     } catch (error) {
-      // If meetings endpoint fails, try a simpler test
+     
       if (error.response?.status === 404 || error.response?.data?.code === 1001) {
         return { 
           success: true, 

@@ -71,15 +71,18 @@ export class UserProgressService {
     }
   }
 
-  private async generateProgressRecords(userId: string, purchaseType: PurchaseType, itemId: string) {
-    switch (purchaseType) {
-      case PurchaseType.COURSE:
-        return this.createCourseProgressRecords(userId, itemId);
-   
-      default:
-        return [];
-    }
+private async generateProgressRecords(
+  userId: string,
+  purchaseType: PurchaseType,
+  itemId: string
+) {
+  if (purchaseType === PurchaseType.COURSE) {
+    return this.createCourseProgressRecords(userId, itemId);
   }
+
+  return [];
+}
+
 
   private async createCourseProgressRecords(userId: string, courseId: string) {
     const course = await this.courseRepo.findOne({

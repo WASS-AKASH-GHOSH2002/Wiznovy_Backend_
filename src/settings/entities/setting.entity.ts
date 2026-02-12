@@ -61,10 +61,10 @@ export class Setting {
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 1.8 })
   gstPercentage: number;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0.0})
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0})
  sessionCommissionRate: number;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, default:0.0})
+  @Column({ type: 'decimal', precision: 5, scale: 2, default:0})
   courseCommissionRate: number;
 
   @Column({ type: 'enum', enum: DefaultStatus, default: DefaultStatus.ACTIVE })

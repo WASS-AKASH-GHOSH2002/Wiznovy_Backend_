@@ -9,7 +9,7 @@ import { CreateSessionDto, SessionPaginationDto } from './dto/create-session.dto
 import { CancelSessionDto } from './dto/cancel-session.dto';
 import { AdminCancelSessionDto } from './dto/admin-cancel-session.dto';
 import { RescheduleSessionDto } from './dto/reschedule-session.dto';
-import { SessionStatus, PurchaseType, PaymentStatus, SessionType, AdminActionType, AdminActionTargetType } from '../enum';
+import { SessionStatus, PurchaseType, PaymentStatus, SessionType, } from '../enum';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TutorAvailabilityService } from '../tutor-availability/tutor-availability.service';
 import { NodeMailerService } from '../node-mailer/node-mailer.service';
@@ -179,14 +179,14 @@ export class SessionService {
         await this.notificationsService.create({
           title: 'Zoom Meeting Ready',
           desc: `Your session is confirmed! Meeting ID: ${zoomMeeting.meetingId}. Join 5 minutes early.`,
-          type: 'ZOOM_MEETING',
+          type: 'SESSION_BOOKED',
           accountId: userId
         });
 
         await this.notificationsService.create({
           title: 'Zoom Meeting Ready',
           desc: `Session with ${userName} confirmed! Meeting ID: ${zoomMeeting.meetingId}. Start 10 minutes early.`,
-          type: 'ZOOM_MEETING',
+          type: 'SESSION_BOOKED',
           accountId: dto.tutorId
         });
       }
@@ -961,7 +961,7 @@ export class SessionService {
 
     // Create Zoom meeting
     try {
-      const sessionDateTime = new Date(`${sessionDateStr}T${session.startTime}:00`);
+      
       await this.zoomService.createMeetingForSession({
         id: session.id,
         sessionDate: new Date(sessionDateStr),
@@ -990,25 +990,25 @@ export class SessionService {
 
     // Send confirmation emails
     if (session.user?.email) {
-      await this.nodeMailerService.sendSessionBookingConfirmation(
-        session.user.email,
-        session.user.userDetail?.[0]?.name || 'Student',
-        session.tutor?.tutorDetail?.[0]?.name || 'Tutor',
-        sessionDateStr,
-        session.startTime,
-        session.endTime
-      );
+      await this.nodeMailerService.sendSessionBookingConfirmation({
+        email: session.user.email,
+        studentName: session.user.userDetail?.[0]?.name || 'Student',
+        tutorName: session.tutor?.tutorDetail?.[0]?.name || 'Tutor',
+        sessionDate: sessionDateStr,
+        startTime: session.startTime,
+        endTime: session.endTime
+      });
     }
 
     if (session.tutor?.email) {
-      await this.nodeMailerService.sendSessionBookingConfirmation(
-        session.tutor.email,
-        session.tutor.tutorDetail?.[0]?.name || 'Tutor',
-        session.user?.userDetail?.[0]?.name || 'Student',
-        sessionDateStr,
-        session.startTime,
-        session.endTime
-      );
+      await this.nodeMailerService.sendSessionBookingConfirmation({
+        email: session.tutor.email,
+        studentName: session.tutor.tutorDetail?.[0]?.name || 'Tutor',
+        tutorName: session.user?.userDetail?.[0]?.name || 'Student',
+        sessionDate: sessionDateStr,
+        startTime: session.startTime,
+        endTime: session.endTime
+      });
     }
 
     return {
@@ -1210,30 +1210,24 @@ export class SessionService {
       );
     }
 
-    await this.notificationsService.create({
-      title: 'Session Cancelled by Admin',
-      desc: `Your session on ${session.sessionDate} at ${session.startTime} has been cancelled by admin${dto.reason ? `: ${dto.reason}` : ''}`,
-      type: 'SESSION_CANCELLED',
-      accountId: session.userId
-    });
+ const reasonText = dto.reason ? `: ${dto.reason}` : '';
 
-    await this.notificationsService.create({
-      title: 'Session Cancelled by Admin',
-      desc: `Session on ${session.sessionDate} at ${session.startTime} was cancelled by admin${dto.reason ? `: ${dto.reason}` : ''}`,
-      type: 'SESSION_CANCELLED',
-      accountId: session.tutorId
-    });
+await this.notificationsService.create({
+  title: 'Session Cancelled by Admin',
+  desc: `Your session on ${session.sessionDate} at ${session.startTime} has been cancelled by admin${reasonText}`,
+  type: 'SESSION_CANCELLED',
+  accountId: session.userId
+});
 
-    await this.adminActionLogService.log(
-      adminId,
-      AdminActionType.SESSION_CANCELLED,
-      sessionId,
-      AdminActionTargetType.SESSION,
-      `Admin cancelled session ${sessionId}${dto.reason ? ` - Reason: ${dto.reason}` : ''}`,
-      ipAddress,
-      userAgent,
-    );
+await this.notificationsService.create({
+  title: 'Session Cancelled by Admin',
+  desc: `Session on ${session.sessionDate} at ${session.startTime} was cancelled by admin${reasonText}`,
+  type: 'SESSION_CANCELLED',
+  accountId: session.tutorId
+});
 
+
+   
     return {
       message: 'Session cancelled successfully by admin. The time slot is now available for other users to book.',
       refundProcessed,

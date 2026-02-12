@@ -35,12 +35,12 @@ export class UpdateWalletTransactionDto {
 export class WalletTransactionPaginationDto {
   @IsOptional()
   @Type(() => Number)
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) =>Number.parseInt(value))
   limit?: number = 10;
 
   @IsOptional()
   @Type(() => Number)
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => Number.parseInt(value))
   offset?: number = 0;
 
   @IsOptional()

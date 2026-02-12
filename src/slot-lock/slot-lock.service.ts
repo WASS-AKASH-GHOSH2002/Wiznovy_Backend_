@@ -3,7 +3,7 @@ import Redis from 'ioredis';
 
 @Injectable()
 export class SlotLockService {
-  private redis: Redis;
+  private readonly redis: Redis;
 
   constructor() {
     this.redis = new Redis({

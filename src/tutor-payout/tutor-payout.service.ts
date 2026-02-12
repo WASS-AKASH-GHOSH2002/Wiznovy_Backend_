@@ -72,10 +72,7 @@ export class TutorPayoutService {
       throw new BadRequestException('Invalid bank detail ID provided');
     }
 
-    const tutor = await this.accountRepo.findOne({
-      where: { id: tutorId },
-      relations: ['tutorDetail']
-    });
+  
 
     const payout = this.payoutRepo.create({
       tutorId,
@@ -93,10 +90,7 @@ export class TutorPayoutService {
       accountId: tutorId
     });
 
-    if (tutor?.email) {
-      const tutorName = tutor.tutorDetail?.[0]?.name || 'Tutor';
-      // Email notification can be added later
-    }
+   
 
     return { message: 'Payout request created successfully', payout: savedPayout };
   }

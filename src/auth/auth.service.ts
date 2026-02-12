@@ -685,9 +685,9 @@ export class AuthService {
       });
 
       const payload = ticket.getPayload();
-      if (!payload || !payload.email_verified) {
-        throw new BadRequestException('Invalid Google token');
-      }
+    if (!payload?.email_verified) {
+  throw new BadRequestException('Invalid Google token');
+}
 
       const { email, name, picture } = payload;
       let existingTutor = await this.repo.findOne({ 
@@ -695,8 +695,7 @@ export class AuthService {
         relations: ['tutorDetail']
       });
 
-      const token = await APIFeatures.assignJwtToken(existingTutor?.id || 'temp', this.jwtService);
-
+      
       if (existingTutor) {
         const finalToken = await APIFeatures.assignJwtToken(existingTutor.id, this.jwtService);
         await this.updateUserProfile(existingTutor, picture, UserRole.TUTOR);
@@ -751,21 +750,23 @@ export class AuthService {
   }
 private async generateTutorId(): Promise<string> {
   const today = new Date();
-  const dateStr = today.toLocaleDateString('en-CA').replace(/-/g, '');
+  const dateStr = today.toLocaleDateString('en-CA').split('-').join('');
   const prefix = 'WIZ';
 
-  
   const lastTutor = await this.tutordetailRepo
     .createQueryBuilder('tutor')
-    .where('tutor.tutorId LIKE :pattern', { pattern: `${prefix}%/%` }) 
+    .where('tutor.tutorId LIKE :pattern', { pattern: `${prefix}%/%` })
     .orderBy('tutor.tutorId', 'DESC')
     .getOne();
 
-  let sequence = 1001; 
+  let sequence = 1001;
 
-  const lastSequence = lastTutor?.tutorId ? Number.parseInt(lastTutor.tutorId.split('/')[1], 10) : Number.NaN;
+  const lastSequence = lastTutor?.tutorId
+    ? Number.parseInt(lastTutor.tutorId.split('/')[1], 10)
+    : Number.NaN;
+
   if (!Number.isNaN(lastSequence)) {
-    sequence = lastSequence + 1; 
+    sequence = lastSequence + 1;
   }
 
   return `${prefix}${dateStr}/${sequence}`;

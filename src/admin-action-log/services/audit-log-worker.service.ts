@@ -9,8 +9,8 @@ export class AuditLogWorkerService implements OnModuleInit, OnModuleDestroy {
   private isRunning = false;
 
   constructor(
-    @Inject(REDIS_CLIENT) private redis: Redis,
-    private adminActionLogService: AdminActionLogService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    private  readonly adminActionLogService: AdminActionLogService,
   ) {}
 
   async onModuleInit() {

@@ -5,7 +5,6 @@ import { Repository } from 'typeorm';
 import { UpdateTutorDetailDto } from './dto/update-tutor-details.dto';
 import { TutorDetail } from './entities/tutor-detail.entity';
 import { AdminActionLogService } from 'src/admin-action-log/admin-action-log.service';
-import { AdminActionType, AdminActionTargetType } from 'src/enum';
 import { unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -34,15 +33,7 @@ export class TutorDetailsService {
     const obj = Object.assign(result, dto);
     const updated = await this.repo.save(obj);
     
-    // if (adminId && adminId !== accountId) {
-    //   await this.adminActionLogService.log(
-    //     adminId,
-    //     AdminActionType.TUTOR_UPDATED,
-    //     accountId,
-    //     AdminActionTargetType.TUTOR,
-    //     `Tutor profile updated for ${result.name || accountId}`
-    //   );
-    // }
+   
     
     return updated;
   }

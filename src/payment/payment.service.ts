@@ -14,8 +14,8 @@ import { PaymentPaginationDto } from './dto/payment-pagination.dto';
 import { InvoiceGenerator, InvoiceData } from '../utils/invoice-generator.utils';
 import { OrderNumberGenerator } from '../utils/order-number.util';
 import { SettingsService } from '../settings/settings.service';
-import { writeFileSync } from 'fs';
-import { join } from 'path';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 @Injectable()
 export class PaymentService {
@@ -383,16 +383,16 @@ export class PaymentService {
         session.status = SessionStatus.SCHEDULED;
         await this.sessionRepo.save(session);
 
-        // Create Zoom meeting
+    
         const zoomMeeting = await this.zoomService.createMeetingForSession(session);
 
-        // Get user details
+       
         const userWithDetails = await this.accountRepo.findOne({
           where: { id: session.userId },
           relations: ['userDetail']
         });
 
-        // Get session with zoom details
+     
         const sessionWithZoom = await this.sessionRepo.findOne({
           where: { id: sessionId },
           relations: ['zoomMeeting']
@@ -715,8 +715,8 @@ export class PaymentService {
         customerEmail: purchaseWithDetails.account?.email || '',
         items: await this.getInvoiceItems(purchaseWithDetails),
         subtotal: purchaseWithDetails.amount,
-        tax: parseFloat((purchaseWithDetails.amount * 0.1).toFixed(2)),
-        total: parseFloat((purchaseWithDetails.amount * 1.1).toFixed(2)),
+        tax: Number.parseFloat((purchaseWithDetails.amount * 0.1).toFixed(2)),
+        total: Number.parseFloat((purchaseWithDetails.amount * 1.1).toFixed(2)),
         paymentStatus: purchaseWithDetails.paymentStatus,
         transactionId: purchaseWithDetails.stripePaymentIntentId || 'N/A',
         companyName: settings?.companyName || 'N/A',
@@ -732,7 +732,7 @@ export class PaymentService {
       const filePath = join(process.cwd(), 'uploads', 'invoices', fileName);
 
       // Create directory if it doesn't exist
-      const fs = require('fs');
+      const fs = require('node:fs');
       const dir = join(process.cwd(), 'uploads', 'invoices');
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });

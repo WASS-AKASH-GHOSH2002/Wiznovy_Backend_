@@ -6,8 +6,8 @@ import { UserRole } from 'src/enum';
 @Injectable()
 export class AdminGuard implements CanActivate {
   constructor(
-    private jwtService: JwtService,
-    private configService: ConfigService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   canActivate(context: ExecutionContext): boolean {

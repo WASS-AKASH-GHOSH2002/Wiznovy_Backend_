@@ -19,23 +19,12 @@ export class BannerService {
   ) {}
 
   async create(image: string, dto: BannerDto) {
-    // if (dto.status === DefaultStatus.ACTIVE) {
-    //   // const activeCount = await this.repo.count({
-    //   //   where: {
-    //   //     bannerType: dto.bannerType,
-    //   //     status: DefaultStatus.ACTIVE
-    //   //   }
-    //   // });
-      
-    //   // if (activeCount >= 3) {
-    //   //   throw new NotFoundException(`Maximum 3 active banners allowed for ${dto.bannerType}`);
-    //   // }
-    //  }
+    
     
     const obj = {image: process.env.WIZNOVY_CDN_LINK + image,
       imagePath: image,
       bannerType: dto.bannerType,
-      //status: dto.status || DefaultStatus.PENDING,
+
     };
     return this.repo.save(obj);
   }

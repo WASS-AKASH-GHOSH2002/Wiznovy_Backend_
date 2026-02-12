@@ -9,7 +9,7 @@ import { UpdateSettingsDto } from './dto/update-settings.dto';
 @Injectable()
 export class SettingsService {
   private readonly CACHE_KEY = 'app_settings';
-  private readonly CACHE_TTL = 300; // 5 minutes
+  private readonly CACHE_TTL = 300; 
 
   constructor(
     @InjectRepository(Setting)

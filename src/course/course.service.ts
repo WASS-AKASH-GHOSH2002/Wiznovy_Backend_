@@ -415,11 +415,15 @@ async thumbnail(img: string, result: Course) {
       await this.notifyTutorStatusChange(result.tutorId, result.name, dto.status);
       
       if (adminId) {
-        const actionType = dto.status === CourseStatus.APPROVED 
-          ? AdminActionType.COURSE_APPROVED 
-          : dto.status === CourseStatus.REJECTED 
-          ? AdminActionType.COURSE_REJECTED 
-          : AdminActionType.COURSE_UPDATED;
+        let actionType: AdminActionType;
+
+      if (dto.status === CourseStatus.APPROVED) {
+        actionType = AdminActionType.COURSE_APPROVED;
+      } else if (dto.status === CourseStatus.REJECTED) {
+        actionType = AdminActionType.COURSE_REJECTED;
+      } else {
+        actionType = AdminActionType.COURSE_UPDATED;
+      }
         
         await this.adminActionLogService.log(
           adminId,

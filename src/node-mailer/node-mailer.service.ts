@@ -1,6 +1,19 @@
 import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable, Logger, NotAcceptableException } from '@nestjs/common';
 
+export interface SessionBookingConfirmationDto {
+  email: string;
+  studentName: string;
+  tutorName: string;
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  sessionType?: string;
+  zoomLink?: string;
+  meetingId?: string;
+  passcode?: string;
+}
+
 @Injectable()
 export class NodeMailerService {
   private readonly logger = new Logger(NodeMailerService.name);
@@ -539,7 +552,8 @@ export class NodeMailerService {
     }
   }
 
-  async sendSessionBookingConfirmation(email: string, studentName: string, tutorName: string, sessionDate: string, startTime: string, endTime: string, sessionType: string = 'lesson', zoomLink?: string, meetingId?: string, passcode?: string) {
+  async sendSessionBookingConfirmation(dto: SessionBookingConfirmationDto) {
+    const { email, studentName, tutorName, sessionDate, startTime, endTime, sessionType = 'lesson', zoomLink, meetingId, passcode } = dto;
     try {
       return await this.mailService.sendMail({
         to: email,
