@@ -1,1 +1,0 @@
-// This file has been removed as the image upload API is no longer needed
