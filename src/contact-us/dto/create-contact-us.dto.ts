@@ -1,18 +1,22 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsEmail,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 
 export class CreateContactUsDto {
-  @ApiPropertyOptional({ description: 'Account ID (optional for logged-in users)' })
-  @IsOptional()
+  @ApiPropertyOptional({ description: 'Category ID ' })
+  @IsNotEmpty()
   @IsString()
-  accountId?: string;
+  categoryId: string;
 
   @ApiProperty({ description: 'First name of the person' })
   @IsNotEmpty()
@@ -38,11 +42,6 @@ export class CreateContactUsDto {
   @MaxLength(20)
   phoneNumber: string;
 
-  @ApiPropertyOptional({ description: 'Country code' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(10)
-  code: string;
 
   @ApiProperty({ description: 'Message or query' })
   @IsNotEmpty()
@@ -50,4 +49,33 @@ export class CreateContactUsDto {
   @MinLength(5)
   @MaxLength(500)
   message: string;
+}
+
+
+export class ContactUsPaginationDto {
+  @IsNotEmpty()
+  @Type(() => Number)
+  @IsNumber()
+  @Type(() => Number)
+  @Min(5)
+  @Max(100)
+  limit: number;
+
+  @IsNotEmpty()
+  @Type(() => Number)
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  offset: number;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(0)
+  @MaxLength(100)
+  keyword: string;
+
+  @ApiPropertyOptional({ description: 'Category ID to filter' })
+  @IsOptional()
+  @IsString()
+  categoryId: string;
 }

@@ -2,6 +2,7 @@ import { DefaultStatus } from 'src/enum';
 import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
 import { UserDetail } from 'src/user-details/entities/user-detail.entity';
 import { Course } from 'src/course/entities/course.entity';
+import { Book } from 'src/book/entities/book.entity';
 import {
   Column,
   CreateDateColumn,
@@ -16,7 +17,7 @@ export class Language {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
   @Column({ type: 'enum', enum: DefaultStatus, default: DefaultStatus.ACTIVE })
@@ -29,11 +30,14 @@ export class Language {
   updatedAt: Date;
 
   @OneToMany(() => UserDetail, (userDetail) => userDetail.language)
-    userDetails: UserDetail[];
+  userDetails: UserDetail[];
 
   @OneToMany(() => TutorDetail, (tutorDetail) => tutorDetail.language)
-    tutorDetails: TutorDetail[];
+  tutorDetails: TutorDetail[];
 
   @OneToMany(() => Course, (course) => course.language)
-    courses: Course[];
+  courses: Course[];
+
+  @OneToMany(() => Book, (book) => book.language)
+  books: Book[];
 }

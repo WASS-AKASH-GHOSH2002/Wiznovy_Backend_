@@ -19,11 +19,11 @@ export class FileUploadUtil {
       storage: this.createStorageConfig(destination),
       limits: {
         fileSize,
-        files: 1,
-        fields: 5,
+        files: 10,
+        fields: 15,
         fieldNameSize: 100,
         fieldSize: 2097152,
-        parts: 7
+        parts: 20
       },
     };
   }

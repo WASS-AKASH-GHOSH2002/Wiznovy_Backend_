@@ -3,6 +3,7 @@ export enum UserRole {
   USER = 'USER',
   TUTOR='TUTOR',
   STAFF = 'STAFF',
+  //SUB_ADMIN = 'SUB_ADMIN',
 
 }
 
@@ -61,7 +62,7 @@ export enum PageType {
 }
 
 export enum NotificationType {
-  // ALL FOR ADMIN AND STAFF
+ 
   NEW_PRODUCT = 'NEW PRODUCT',
   NEW_ACCOUNT = 'NEW ACCOUNT',
   CONTACT_US = 'CONTACT US',
@@ -90,6 +91,10 @@ export enum NotificationType {
   PAYMENT_SUCCESS = 'PAYMENT_SUCCESS',
   PAYMENT_FAILED = 'PAYMENT_FAILED',
   REFUND_PROCESSED = 'REFUND_PROCESSED',
+
+  PAYOUT_SUBMITTED = 'PAYOUT_SUBMITTED',
+  PAYOUT_APPROVED = 'PAYOUT_APPROVED',
+  PAYOUT_REJECTED = 'PAYOUT_REJECTED',
 
   // FOR ALL
   LOGIN = 'LOGIN',
@@ -142,7 +147,6 @@ export enum Gender {
 export enum PaymentStatus {
   PENDING = 'PENDING',
   COMPLETED = 'COMPLETED',
-  ALL = 'ALL',
   REFUNDED = 'REFUNDED',
   CANCELLED = 'CANCELLED',
   FAILED = 'FAILED',
@@ -154,8 +158,6 @@ export enum AccessTypes {
 
 export enum PurchaseType {
   COURSE = 'COURSE',
-  UNIT = 'UNIT',
-  STUDY_MATERIAL = 'STUDY_MATERIAL',
   SESSION = 'SESSION',
 }
 export enum RatingStatus {
@@ -214,11 +216,11 @@ export enum ScheduleStatus {
   BLOCKED = 'BLOCKED',
 }
 
-export enum BookingStatus {
+export enum BookStatus {
   PENDING = 'PENDING',
-  CONFIRMED = 'CONFIRMED',
-  CANCELLED = 'CANCELLED',
-  COMPLETED = 'COMPLETED',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  DELETED = 'DELETED',
 }
 
 export enum SessionDuration {
@@ -284,7 +286,7 @@ export enum PayoutStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
-  PROCESSED = 'PROCESSED'
+
 }
 
 export enum PaymentMethod {
@@ -294,8 +296,45 @@ export enum PaymentMethod {
 }
 
 export enum FileSizeLimit {
-  IMAGE_SIZE = 5242880, // 5MB
-  VIDEO_SIZE = 52428800, // 50MB
-  DOCUMENT_SIZE = 10485760, // 10MB
-  LOGO_SIZE = 1048576, // 1MB
+  IMAGE_SIZE = 5242880, 
+  VIDEO_SIZE = 52428800,
+  DOCUMENT_SIZE = 10485760, 
+  LOGO_SIZE = 1048576, 
+}
+
+export enum AdminActionType {
+  CREATE = 'CREATE',
+  UPDATE = 'UPDATE',
+  DELETE = 'DELETE',
+  LOGIN = 'LOGIN',
+  LOGOUT = 'LOGOUT',
+  APPROVE = 'APPROVE',
+  REJECT = 'REJECT',
+  SUSPEND = 'SUSPEND',
+  ACTIVATE = 'ACTIVATE',
+  COURSE_APPROVED = 'COURSE_APPROVED',
+  COURSE_REJECTED = 'COURSE_REJECTED',
+  COURSE_UPDATED = 'COURSE_UPDATED',
+  PAYOUT_PROCESSED = 'PAYOUT_PROCESSED',
+  USER_UPDATED = 'USER_UPDATED',
+  USER_STATUS_CHANGED = 'USER_STATUS_CHANGED',
+  TUTOR_UPDATED = 'TUTOR_UPDATED',
+  TUTOR_STATUS_CHANGED = 'TUTOR_STATUS_CHANGED',
+  STAFF_CREATED = 'STAFF_CREATED',
+  STAFF_UPDATED = 'STAFF_UPDATED',
+  SESSION_CANCELLED = 'SESSION_CANCELLED',
+}
+
+export enum AdminActionTargetType {
+  COURSE = 'COURSE',
+  PAYOUT = 'PAYOUT',
+  USER = 'USER',
+  TUTOR = 'TUTOR',
+  STAFF = 'STAFF',
+  SESSION = 'SESSION',
+}
+
+export enum FaqType {
+  USER = 'USER',
+  TUTOR = 'TUTOR',
 }

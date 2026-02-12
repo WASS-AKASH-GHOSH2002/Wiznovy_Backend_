@@ -26,19 +26,15 @@ export class CreateBankDetailDto {
   @IsOptional()
   @IsString()
   @MaxLength(20)
-  swiftCode?: string;
+  swiftCode: string;
 
   @ApiProperty({ example: 'Main Branch' })
   @IsNotEmpty()
   @IsString()
   @MaxLength(100)
-  branchName: string;
+  bankName: string;
 
-  @ApiProperty({ example: '001234', required: false })
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  branchCode?: string;
+
 }
 
 export class UpdateBankDetailDto {
@@ -72,11 +68,7 @@ export class UpdateBankDetailDto {
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  branchName?: string;
+  bankName?: string;
 
-  @ApiProperty({ example: '001234', required: false })
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  branchCode?: string;
+ 
 }

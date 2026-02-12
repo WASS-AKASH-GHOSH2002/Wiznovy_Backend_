@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
   Post,
   Put,
   Query,
@@ -14,7 +13,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { PermissionAction, UserRole } from 'src/enum';
-import { LanguageDto, UpdateLanguageDto, LanguageStatusDto, PaginationDto } from './dto/language.dto';
+import { LanguageDto, UpdateLanguageDto, LanguageStatusDto, PaginationDto, BulkLanguageStatusDto } from './dto/language.dto';
 import { LanguagesService } from './languages.service';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
@@ -56,7 +55,7 @@ export class LanguagesController {
   @ApiQuery({ name: 'status', type: Boolean, required: false })
   @ApiResponse({ status: 200, description: 'Returns paginated languages list' })
   find(@Query() dto: PaginationDto) {
-    return this.languagesService.find(dto);
+    return this.languagesService.findAll(dto);
   }
   
   @Get('list')
@@ -89,7 +88,20 @@ export class LanguagesController {
     return this.languagesService.update(id, dto);
   }
 
-  @Patch(':id/status')
+  @Put('bulk-status')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'language'])
+  @ApiOperation({ summary: 'Bulk update language status' })
+  @ApiBody({ type: BulkLanguageStatusDto })
+  @ApiResponse({ status: 200, description: 'Languages status updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  bulkUpdateStatus(@Body() dto: BulkLanguageStatusDto) {
+    console.log('Controller - Bulk update request received:', dto);
+    return this.languagesService.bulkUpdateStatus(dto);
+  }
+
+  @Put('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'language'])

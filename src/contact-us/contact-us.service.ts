@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { CreateContactUsDto } from './dto/create-contact-us.dto';
+import { ContactUsPaginationDto, CreateContactUsDto } from './dto/create-contact-us.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ContactUs } from './entities/contact-us.entity';
-import { Brackets,  Repository } from 'typeorm';
-import { CommonPaginationDto } from 'src/common/dto/common-pagination.dto';
+import { Brackets, Repository } from 'typeorm';
 
 @Injectable()
 export class ContactUsService {
@@ -12,37 +11,41 @@ export class ContactUsService {
   ) {}
 
   async create(dto: CreateContactUsDto) {
-    const obj = Object.create(dto);
-    return this.repo.save(obj);
+    const contactUs = this.repo.create(dto);
+    return this.repo.save(contactUs);
   }
 
 
-  async findAll(dto: CommonPaginationDto) {
+  async findAll(dto: ContactUsPaginationDto) {
     const keyword = dto.keyword || '';
     const query = this.repo
       .createQueryBuilder('contactUs')
-      .leftJoinAndSelect('contactUs.account', 'account')
-      .leftJoinAndSelect('account.userDetail', 'userDetail')
-      .leftJoinAndSelect('account.tutorDetail','tutorDetail')
+      .leftJoinAndSelect('contactUs.category', 'category')
+      
       .select([
         'contactUs.id',
-        'contactUs.query',
+        'contactUs.firstName',
+        'contactUs.lastName',
+        'contactUs.email',
+        'contactUs.phoneNumber',
+        'contactUs.message',
         'contactUs.createdAt',
+        'contactUs.categoryId',
+        'category.id',
+        'category.title',
+    
 
-        'account.id',
-        'account.email',
-
-        'userDetail.id',
-        'userDetail.name',
-
-        'tutorDetail.id',
-        'tutorDetail.name'
       ]);
+      if (dto.categoryId) {
+        query.andWhere('contactUs.categoryId = :categoryId', {
+          categoryId: dto.categoryId,
+        });
+      }
     if (keyword && keyword.length > 0) {
       query.andWhere(
         new Brackets((qb) => {
           qb.where(
-            'contactUs.query LIKE :keyword OR account.phoneNumber LIKE :keyword OR userDetail.name LIKE :keyword OR tutorDetail.name LIKE :keyword',
+            'contactUs.firstName LIKE :keyword OR contactUs.lastName LIKE :keyword OR contactUs.email LIKE :keyword OR contactUs.phoneNumber LIKE :keyword OR contactUs.message LIKE :keyword OR category.title LIKE :keyword',
             {
               keyword: '%' + keyword + '%',
             },
@@ -58,5 +61,18 @@ export class ContactUsService {
       .getManyAndCount();
 
     return { result, total };
+  }
+
+  async findOne(id: string) {
+    const contactUs = await this.repo.createQueryBuilder('contactUs')
+      .leftJoinAndSelect('contactUs.category', 'category')
+      .where('contactUs.id = :id', { id })
+      .getOne();
+
+    if (!contactUs) {
+      throw new Error('Contact us entry not found');
+    }
+
+    return contactUs;
   }
 }

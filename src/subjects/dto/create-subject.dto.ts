@@ -11,10 +11,6 @@ export class CreateSubjectDto {
     name:string;
 
 
-@IsOptional()
-@IsString()
-@MaxLength(1000)
-description:string;
 
 
 @IsOptional()
@@ -29,7 +25,7 @@ export class SubjectPaginationDto {
   @IsNotEmpty()
   @Type(() => Number)
   @IsNumber()
-  @Min(10)
+  @Min(0)
   @Max(100)
   limit: number;
 
@@ -58,4 +54,14 @@ export class UpdateStatusDto{
     @IsNotEmpty()
     @IsEnum(DefaultStatus)
     status:DefaultStatus
-} 
+}
+
+export class BulkSubjectStatusDto {
+  @IsNotEmpty()
+  @IsString({ each: true })
+  ids: string[];
+
+  @IsNotEmpty()
+  @IsEnum(DefaultStatus)
+  status: DefaultStatus;
+}

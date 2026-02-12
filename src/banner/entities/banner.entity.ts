@@ -18,7 +18,7 @@ export class Banner {
   @Column({ type: 'text', nullable: true })
   imagePath: string;
 
-  @Column({ type: 'enum', enum: DefaultStatus, default: DefaultStatus.PENDING })
+  @Column({ type: 'enum', enum: DefaultStatus, default: DefaultStatus.PENDING})
   status: DefaultStatus;
 
   @Column({ type: 'enum', enum:BannerType,default:BannerType.USER_APP})

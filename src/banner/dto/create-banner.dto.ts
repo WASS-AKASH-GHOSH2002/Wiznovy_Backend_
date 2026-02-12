@@ -26,17 +26,15 @@ export class BannerDto {
   @IsOptional()
   @IsEnum(BannerType)
   bannerType:BannerType;
-
-
-
 }
+
 
 export class BannerPaginationDto {
   @ApiProperty({ example: 20, minimum: 10, maximum: 100 })
   @IsNotEmpty()
   @Type(() => Number)
   @IsNumber()
-  @Min(10)
+  @Min(0)
   @Max(100)
   limit: number;
 
@@ -71,12 +69,12 @@ export class BannerFilterDto {
   @IsEnum(BannerType)
   bannerType: BannerType;
 
-  @ApiPropertyOptional({
-    enum: DefaultStatus,
-    description: 'Filter by status',
-    default: DefaultStatus.ACTIVE,
-  })
-  @IsOptional()
-  @IsEnum(DefaultStatus)
-  status?: DefaultStatus = DefaultStatus.ACTIVE;
+  // @ApiPropertyOptional({
+  //   enum: DefaultStatus,
+  //   description: 'Filter by status',
+  //   default: DefaultStatus.ACTIVE,
+  // })
+  // @IsOptional()
+  // @IsEnum(DefaultStatus)
+  // status?: DefaultStatus = DefaultStatus.ACTIVE;
 }

@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Not, Repository } from 'typeorm';
-import { CreateCityDto, UpdateCityDto, CityPaginationDto, CityStatusDto } from './dto/create-city.dto';
+import { CreateCityDto, UpdateCityDto, CityPaginationDto, CityStatusDto, BulkCityStatusDto } from './dto/create-city.dto';
 import { City } from './entities/city.entity';
 import { State } from 'src/state/entities/state.entity';
 import { DefaultStatus } from 'src/enum';
@@ -66,9 +66,7 @@ export class CityService {
 
     if (dto.status) {
       query.andWhere('city.status = :status', { status: dto.status });
-    } else {
-      query.andWhere('city.status = :status', { status: 'active' });
-    }
+    } 
 
     const [result, total] = await query
       .skip(dto.offset)
@@ -144,5 +142,10 @@ export class CityService {
     const result = await this.findOne(id);
     await this.repo.remove(result);
     return { message: 'City deleted successfully' };
+  }
+
+  async bulkUpdateStatus(dto: BulkCityStatusDto) {
+    await this.repo.update(dto.ids, { status: dto.status });
+    return { message: `${dto.ids.length} cities status updated successfully` };
   }
 }

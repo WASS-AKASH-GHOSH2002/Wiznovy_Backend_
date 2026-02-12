@@ -55,11 +55,21 @@ export class StateStatusDto {
   status: DefaultStatus;
 }
 
+export class BulkStateStatusDto {
+  @IsNotEmpty()
+  @IsString({ each: true })
+  ids: string[];
+
+  @IsNotEmpty()
+  @IsEnum(DefaultStatus)
+  status: DefaultStatus;
+}
+
 export class StatePaginationDto {
   @IsNotEmpty()
   @Type(() => Number)
   @IsNumber()
-  @Min(10)
+  @Min(0)
   @Max(100)
   limit: number;
 

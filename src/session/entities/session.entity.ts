@@ -1,4 +1,5 @@
 import { Account } from 'src/account/entities/account.entity';
+import { ZoomMeeting } from 'src/zoom/entities/zoom.entity';
 import { SessionStatus, SessionType } from 'src/enum';
 import {
   Column,
@@ -6,6 +7,7 @@ import {
   Entity,
   ManyToOne,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -68,4 +70,7 @@ export class Session {
 
   @OneToMany('Rating', 'session')
   ratings: any[];
+
+  @OneToOne(() => ZoomMeeting, zoomMeeting => zoomMeeting.session)
+  zoomMeeting: ZoomMeeting;
 }

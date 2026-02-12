@@ -1,6 +1,7 @@
 import { DefaultStatus } from "src/enum";
 import { TutorDetail } from "src/tutor-details/entities/tutor-detail.entity";
 import { Course } from "src/course/entities/course.entity";
+import { Book } from "src/book/entities/book.entity";
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity()
@@ -11,8 +12,6 @@ export class Subject {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ type: 'text', nullable: true })
-  description: string;
 
   
   @Column({ type: 'text', nullable: true })
@@ -36,6 +35,9 @@ export class Subject {
 
 @OneToMany(() => Course, (course) => course.subject)
   courses: Course[];
+
+@OneToMany(() => Book, (book) => book.subject)
+  books: Book[];
 
 
 

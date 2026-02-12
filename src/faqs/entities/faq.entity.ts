@@ -1,4 +1,4 @@
-import { DefaultStatus } from 'src/enum';
+import { DefaultStatus, FaqType } from 'src/enum';
 import {
   Column,
   CreateDateColumn,
@@ -19,11 +19,11 @@ export class Faq {
   @Column({ type: 'text', nullable: true })
   answer: string;
 
-  @Column({ type: 'enum', enum: DefaultStatus, default: DefaultStatus.PENDING })
+  @Column({ type: 'enum', enum: DefaultStatus, default: DefaultStatus.ACTIVE })
   status: DefaultStatus;
 
-  @Column({ type: 'enum', enum: ['USER', 'TUTOR'], default: 'USER' })
-  type: 'USER' | 'TUTOR';
+  @Column({ type: 'enum', enum: FaqType, default: FaqType.USER })
+  type: FaqType;
 
   @CreateDateColumn()
   createdAt: Date;

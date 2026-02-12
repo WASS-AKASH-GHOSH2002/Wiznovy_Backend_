@@ -8,8 +8,10 @@ import {
   Post,
   Put,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -299,6 +301,30 @@ export class AccountController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   bulkTutorStatus(@Body() dto: BulkStatusUpdateDto) {
     return this.accountService.bulkTutorStatus(dto.ids, dto.status);
+  }
+
+  @Get('pdf/all-tutors')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @CheckPermissions([PermissionAction.READ, 'account'])
+  @ApiOperation({ summary: 'Generate PDF report for all tutors' })
+  @ApiResponse({ status: 200, description: 'PDF generated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  async generateAllTutorsPdf(@Res() res: Response) {
+    return this.accountService.generateAllTutorsPdf(res);
+  }
+
+  @Get('pdf/all-users')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @CheckPermissions([PermissionAction.READ, 'account'])
+  @ApiOperation({ summary: 'Generate PDF report for all users' })
+  @ApiResponse({ status: 200, description: 'PDF generated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  async generateAllUsersPdf(@Res() res: Response) {
+    return this.accountService.generateAllUsersPdf(res);
   }
 
   @Patch('update-contact/:id')

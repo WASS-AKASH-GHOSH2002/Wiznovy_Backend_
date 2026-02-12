@@ -1,5 +1,5 @@
 import { CacheModule } from '@nestjs/cache-manager';
-import { Module } from '@nestjs/common';
+import { flatten, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -56,6 +56,11 @@ import { PaymentModule } from './payment/payment.module';
 import { WalletModule } from './wallet/wallet.module';
 import { BankDetailsModule } from './bank-details/bank-details.module';
 import { TutorPayoutModule } from './tutor-payout/tutor-payout.module';
+import { SavedBooksModule } from './saved-books/saved-books.module';
+import { WalletTransactionModule } from './wallet-transaction/wallet-transaction.module';
+import { ZoomModule } from './zoom/zoom.module';
+import { ContactUsCategoryModule } from './contact-us-category/contact-us-category.module';
+import { AdminActionLogModule } from './admin-action-log/admin-action-log.module';
 
 @Module({
   imports: [
@@ -78,7 +83,7 @@ ConfigModule.forRoot({
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize:false,
      
-      // logging: ['error'],
+       logging: ['error'],
       
     }),
     CacheModule.register({
@@ -133,6 +138,11 @@ ConfigModule.forRoot({
     WalletModule,
     BankDetailsModule,
     TutorPayoutModule,
+    SavedBooksModule,
+    WalletTransactionModule,
+    ZoomModule,
+    ContactUsCategoryModule,
+    AdminActionLogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

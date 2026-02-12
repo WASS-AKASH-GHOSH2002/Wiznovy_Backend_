@@ -127,11 +127,14 @@ export class TutorAvailabilityService {
       return { message: 'Tutor is not available on this day', slots: [] };
     }
 
-    const bookedSlots = await this.sessionRepo.createQueryBuilder('session')
-      .where('session.tutorId = :tutorId', { tutorId })
-      .andWhere('DATE(session.sessionDate) = :date', { date })
-      .andWhere('session.status = :status', { status: SessionStatus.SCHEDULED })
-      .getMany();
+    const bookedSlots = await this.sessionRepo
+  .createQueryBuilder('session')
+  .where('session.tutorId = :tutorId', { tutorId })
+  .andWhere('DATE(session.sessionDate) = :date', { date })
+  .andWhere('session.status IN (:...statuses)', { 
+    statuses: [ SessionStatus.SCHEDULED] 
+  })
+  .getMany();
 
     const blockedSlots = await this.blockRepo.find({
       where: {

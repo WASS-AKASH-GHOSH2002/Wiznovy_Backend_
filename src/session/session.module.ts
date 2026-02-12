@@ -10,6 +10,9 @@ import { Account } from '../account/entities/account.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { TutorAvailabilityModule } from '../tutor-availability/tutor-availability.module';
 import { NodeMailerModule } from '../node-mailer/node-mailer.module';
+import { ZoomModule } from '../zoom/zoom.module';
+import { AdminActionLogModule } from '../admin-action-log/admin-action-log.module';
+import { SlotLockModule } from '../slot-lock/slot-lock.module';
 
 @Module({
   imports: [
@@ -17,7 +20,10 @@ import { NodeMailerModule } from '../node-mailer/node-mailer.module';
     ScheduleModule.forRoot(),
     NotificationsModule,
     TutorAvailabilityModule,
-    NodeMailerModule
+    NodeMailerModule,
+    ZoomModule,
+    AdminActionLogModule,
+    SlotLockModule,
   ],
   controllers: [SessionController],
   providers: [SessionService],

@@ -43,10 +43,7 @@ export class BudgetService {
 
     if (dto.status) {
       query.andWhere('budget.status = :status', { status: dto.status });
-    } else {
-      query.andWhere('budget.status = :status', { status: DefaultStatus.ACTIVE });
-    }
-
+    } 
     const [result, total] = await query
       .orderBy('budget.min', 'ASC')
       .skip(dto.offset)

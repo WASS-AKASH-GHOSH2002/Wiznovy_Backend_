@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { CreateQualificationDto, QualificationPaginationDto, QualificationStatusDto } from './dto/create-qualification.dto';
+import { CreateQualificationDto, QualificationPaginationDto, QualificationStatusDto, BulkQualificationStatusDto } from './dto/create-qualification.dto';
 import { UpdateQualificationDto } from './dto/update-qualification.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Brackets, Not } from 'typeorm';
@@ -28,7 +28,9 @@ export class QualificationService {
   async findAll(dto: QualificationPaginationDto) {
     const query = this.repo
       .createQueryBuilder('qualification')
-      .select(['qualification.id', 'qualification.name', 'qualification.status']);
+      .select(['qualification.id', 'qualification.name', 'qualification.status','qualification.createdAt',
+        'qualification.updatedAt'
+      ]);
 
     if (dto.keyword) {
       query.andWhere(
@@ -42,8 +44,6 @@ export class QualificationService {
 
     if (dto.status) {
       query.andWhere('qualification.status = :status', { status: dto.status });
-    } else {
-      query.andWhere('qualification.status = :status', { status: DefaultStatus.ACTIVE });
     }
 
     const [result, total] = await query
@@ -103,5 +103,10 @@ export class QualificationService {
     const result = await this.findOne(id);
     await this.repo.remove(result);
     return { message: 'Qualification deleted successfully' };
+  }
+
+  async bulkUpdateStatus(dto: BulkQualificationStatusDto) {
+    await this.repo.update(dto.ids, { status: dto.status });
+    return { message: `${dto.ids.length} qualifications status updated successfully` };
   }
 }

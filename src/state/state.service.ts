@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { StatePaginationDto, StateStatusDto, CreateStateDto, UpdateStateDto } from './dto/create-state.dto';
+import { StatePaginationDto, StateStatusDto, CreateStateDto, UpdateStateDto, BulkStateStatusDto } from './dto/create-state.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { State } from './entities/state.entity';
 import { Brackets, Not, Repository } from 'typeorm';
@@ -13,7 +13,7 @@ export class StateService {
 
   async create(dto: CreateStateDto) {
     const existingState = await this.repo.findOne({
-      where: { name: dto.name, countryId: dto.countryId }
+      where: { name: dto.name, countryId: dto.countryId, }
     });
 
     if (existingState) {
@@ -54,9 +54,7 @@ export class StateService {
 
     if (dto.status) {
       query.andWhere('state.status = :status', { status: dto.status });
-    } else {
-      query.andWhere('state.status = :status', { status: 'active' });
-    }
+    } 
 
     const [result, total] = await query
       .skip(dto.offset)
@@ -123,5 +121,10 @@ export class StateService {
     const result = await this.findOne(id);
     await this.repo.remove(result);
     return { message: 'State deleted successfully' };
+  }
+
+  async bulkUpdateStatus(dto: BulkStateStatusDto) {
+    await this.repo.update(dto.ids, { status: dto.status });
+    return { message: `${dto.ids.length} states status updated successfully` };
   }
 }

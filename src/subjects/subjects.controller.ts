@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Put, UploadedFile, UseInterceptors, ParseFilePipe } from '@nestjs/common';
 import { SubjectsService } from './subjects.service';
-import { CreateSubjectDto, SubjectPaginationDto, UpdateStatusDto } from './dto/create-subject.dto';
+import { CreateSubjectDto, SubjectPaginationDto, UpdateStatusDto, BulkSubjectStatusDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -60,6 +60,14 @@ export class SubjectsController {
   @CheckPermissions([PermissionAction.UPDATE, 'subject'])
   updateStatus(@Param('id') id: string, @Body() dto: UpdateStatusDto) {
     return this.subjectsService.updateStatus(id, dto);
+  }
+
+  @Put('bulk-status')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'subject'])
+  bulkUpdateStatus(@Body() dto: BulkSubjectStatusDto) {
+    return this.subjectsService.bulkUpdateStatus(dto);
   }
 
   @Put('update/:id')

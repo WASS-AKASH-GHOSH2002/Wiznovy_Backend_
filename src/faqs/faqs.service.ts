@@ -6,8 +6,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DefaultStatusDto } from 'src/common/dto/default-status.dto';
 import { DefaultStatus } from 'src/enum';
-import { Brackets, Repository } from 'typeorm';
-import { FaqDto, FaqPaginationDto, UpdateFaqDto } from './dto/faq.dto';
+import { Brackets, Repository, In } from 'typeorm';
+import { FaqDto, FaqPaginationDto, UpdateFaqDto, BulkFaqStatusDto } from './dto/faq.dto';
 import { Faq } from './entities/faq.entity';
 
 
@@ -30,9 +30,11 @@ export class FaqsService {
     const keyword = dto.keyword || '';
     const queryBuilder = this.repo
       .createQueryBuilder('faq')
-      .where('faq.status = :status', {
-        status: dto.status,
-      });
+      if (dto.status) {
+    queryBuilder.andWhere('faq.status = :status', {
+      status: dto.status,
+    });
+  }
 
     if (dto.type) {
       queryBuilder.andWhere('faq.type = :type', { type: dto.type });
@@ -73,12 +75,20 @@ export class FaqsService {
       .createQueryBuilder('faq')
       .where('faq.status = :status AND faq.type = :type', {
         status: DefaultStatus.ACTIVE,
-        type: type,
+        type,
       })
       .orderBy({ 'faq.createdAt': 'DESC' })
       .getManyAndCount();
 
     return { result, total };
+  }
+
+  async findOne(id: string) {
+    const result = await this.repo.findOne({ where: { id } });
+    if (!result) {
+      throw new NotFoundException('Faq not found!');
+    }
+    return result;
   }
 
   async update(id: string, dto: UpdateFaqDto) {
@@ -97,5 +107,13 @@ export class FaqsService {
     }
     result.status = dto.status;
     return this.repo.save(result);
+  }
+
+  async bulkUpdateStatus(dto: BulkFaqStatusDto) {
+    await this.repo.update(
+      { id: In(dto.ids) },
+      { status: dto.status }
+    );
+    return { message: 'Status updated successfully' };
   }
 }

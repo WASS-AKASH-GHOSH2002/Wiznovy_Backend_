@@ -7,9 +7,11 @@ import {
   Param,
   Delete,
   Query,
+  Put,
 } from '@nestjs/common';
 import { StateService } from './state.service';
-import { CreateStateDto, StatePaginationDto, StateStatusDto, UpdateStateDto } from './dto/create-state.dto';
+import { CreateStateDto, StatePaginationDto, StateStatusDto, UpdateStateDto, BulkStateStatusDto } from './dto/create-state.dto';
+
 
 @Controller('state')
 export class StateController {
@@ -21,6 +23,7 @@ export class StateController {
   }
 
   @Get()
+  
   findAll(@Query() dto: StatePaginationDto) {
     return this.stateService.findAll(dto);
   }
@@ -40,7 +43,7 @@ export class StateController {
     return this.stateService.update(id, updateStateDto);
   }
 
-  @Patch(':id/status')
+  @Put('status/:id')
   updateStatus(@Param('id') id: string, @Body() dto: StateStatusDto) {
     return this.stateService.updateStatus(id, dto);
   }
@@ -48,5 +51,10 @@ export class StateController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.stateService.remove(id);
+  }
+
+  @Put('bulk-status')
+  bulkUpdateStatus(@Body() dto: BulkStateStatusDto) {
+    return this.stateService.bulkUpdateStatus(dto);
   }
 }

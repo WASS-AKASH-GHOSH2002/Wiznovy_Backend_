@@ -9,6 +9,7 @@ import {
   VerifyOtpDto,
   ResendUserOtpDto,
   ResendTutorOtpDto,
+  GoogleLoginDto,
 } from './dto/login.dto';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Account } from 'src/account/entities/account.entity';
@@ -58,7 +59,7 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'User registered successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 409, description: 'User already exists' })
-  userRegister(@Body() dto: UserRegisterDto, @Ip() ip: string) {
+  userRegister(@Body() dto:UserRegisterDto, @Ip() ip: string) {
     dto.ip = ip;
     return this.authService.userRegister(dto);
   }
@@ -88,6 +89,28 @@ export class AuthController {
   userLogin(@Body() dto: UserLoginDto, @Ip() ip: string) {
     dto.ip = ip;
     return this.authService.userLogin(dto);
+  }
+
+  @Post('user/google-login')
+  @ApiOperation({ summary: 'Google OAuth login for both user and tutor' })
+  @ApiBody({ type: GoogleLoginDto })
+  @ApiResponse({ status: 200, description: 'Google login successful' })
+  @ApiResponse({ status: 400, description: 'Invalid Google token' })
+  googleLogin(@Body() dto: GoogleLoginDto, @Ip() ip: string) {
+    dto.ip = ip;
+    return this.authService.googleLogin(dto);
+  }
+
+  @Post('tutor/google-login')
+  @ApiOperation({summary:'Google Oauth login for  tutor'})
+    @ApiBody({type: GoogleLoginDto})
+    @ApiResponse({status:200, description:'Google login successful'})
+    @ApiResponse({status:400, description:'Invalid google token'})
+    tutorGooglelOgin(@Body()dto:GoogleLoginDto, @Ip()ip:string){
+      dto.ip=ip;
+
+    return this.authService.tutorGoogleLogin(dto, ip);
+
   }
 
     @Post('tutor/register')

@@ -1,13 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, MaxFileSizeValidator, Param, ParseFilePipe, Post, Put, UploadedFile, UseGuards, UseInterceptors, } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { UserRole } from 'src/enum';
+import { FileSizeLimit, UserRole } from 'src/enum';
 import { Account } from 'src/account/entities/account.entity';
 import { BankDetailsService } from './bank-details.service';
 import { CreateBankDetailDto, UpdateBankDetailDto } from './dto/bank-detail.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { FileUploadUtil } from 'src/utils/file-upload.util';
 
 @ApiTags('bank-details')
 @ApiBearerAuth('JWT-auth')
@@ -47,6 +49,41 @@ export class BankDetailsController {
   update(@Param('id') id: string, @Body() dto: UpdateBankDetailDto, @CurrentUser() user: Account) {
     return this.bankDetailsService.update(id, user.id, dto);
   }
+
+  @Put('passbook/:id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.TUTOR)
+  @UseInterceptors(FileInterceptor('file', FileUploadUtil.createUploadConfig('./uploads/BankDetails', FileSizeLimit.IMAGE_SIZE)))
+  async passbook(
+    @Param('id') id: string,
+    @UploadedFile(new ParseFilePipe({ 
+      validators: [
+        new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
+       
+      ] 
+    })) file: Express.Multer.File,
+    @CurrentUser() user: Account
+  ) {
+    return this.bankDetailsService.updatePassbookImage(id, user.id, file.path);
+  }
+
+  @Put('document/:id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.TUTOR)
+  @UseInterceptors(FileInterceptor('file', FileUploadUtil.createUploadConfig('./uploads/BankDetails', FileSizeLimit.IMAGE_SIZE)))
+  async document (
+    @Param('id') id: string,
+    @UploadedFile(new ParseFilePipe({ 
+      validators: [
+        new MaxFileSizeValidator({ maxSize: FileSizeLimit.IMAGE_SIZE }),
+       
+      ] 
+    })) file: Express.Multer.File,
+    @CurrentUser() user: Account
+  ) {
+    return this.bankDetailsService.updateDocument(id, user.id, file.path);
+  }
+
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)

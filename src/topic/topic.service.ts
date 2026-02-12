@@ -4,6 +4,7 @@ import {
   UpdateTopicDto,
   TopicStatusDto,
   TopicPaginationDto,
+  BulkTopicStatusDto,
 } from './dto/create-topic.dto';
 import { Topic } from './entities/topic.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -33,25 +34,23 @@ export class TopicService {
   async findAll(dto: TopicPaginationDto) {
     const query = this.repo
       .createQueryBuilder('topic')
-      .select(['topic.id', 'topic.name', 'topic.status', 'topic.description']);
+      .select(['topic.id', 'topic.name', 'topic.status', 
+        'topic.createdAt', 'topic.updatedAt'
+      ]);
 
     if (dto.keyword) {
       query.andWhere(
         new Brackets((qb) => {
           qb.where('topic.name LIKE :keyword', {
             keyword: `%${dto.keyword}%`,
-          }).orWhere('topic.description LIKE :keyword', {
-            keyword: `%${dto.keyword}%`,
-          });
+          })
         }),
       );
     }
 
     if (dto.status) {
       query.andWhere('topic.status = :status', { status: dto.status });
-    } else {
-      query.andWhere('topic.status = :status', { status: DefaultStatus.ACTIVE });
-    }
+    } 
 
     const [result, total] = await query
       .orderBy('topic.name', 'ASC')
@@ -108,5 +107,10 @@ export class TopicService {
     const result = await this.findOne(id);
     await this.repo.remove(result);
     return { message: 'Topic deleted successfully' };
+  }
+
+  async bulkUpdateStatus(dto: BulkTopicStatusDto) {
+    await this.repo.update(dto.ids, { status: dto.status });
+    return { message: `${dto.ids.length} topics status updated successfully` };
   }
 }

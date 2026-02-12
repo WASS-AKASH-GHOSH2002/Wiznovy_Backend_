@@ -69,3 +69,15 @@ export class GoalPaginationDto {
   @IsEnum(DefaultStatus)
   status: DefaultStatus;
 }
+
+export class BulkGoalStatusDto {
+  @ApiProperty({ example: ['id1', 'id2'], description: 'Array of goal IDs' })
+  @IsNotEmpty()
+  @IsString({ each: true })
+  ids: string[];
+
+  @ApiProperty({ enum: DefaultStatus, example: DefaultStatus.ACTIVE })
+  @IsNotEmpty()
+  @IsEnum(DefaultStatus)
+  status: DefaultStatus;
+}

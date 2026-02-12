@@ -24,19 +24,25 @@ import {
   ForgotPassDto,
   UserLoginDto,
   UserRegisterDto,
+  GoogleLoginDto,
 } from './dto/login.dto';
 import { NodeMailerService } from 'src/node-mailer/node-mailer.service';
 import { LoginHistoryService } from 'src/login-history/login-history.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
+import { Wallet } from 'src/wallet/entities/wallet.entity';
+import { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly googleClient: OAuth2Client;
+  private readonly googleTutorClient: OAuth2Client;
 
   constructor(
     private readonly jwtService: JwtService,
     @InjectRepository(Account) private readonly repo: Repository<Account>,
+    @InjectRepository(Wallet) private readonly walletRepo: Repository<Wallet>,
     @InjectRepository(UserPermission)
     private readonly upRepo: Repository<UserPermission>,
     @InjectRepository(UserDetail)
@@ -49,7 +55,10 @@ export class AuthService {
     private readonly loginHistoryService: LoginHistoryService,
     private readonly notificationsService: NotificationsService,
 
-  ) { }
+  ) {
+    this.googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    this.googleTutorClient = new OAuth2Client(process.env.GOOGLE_TUTOR_CLIENT_ID);
+  }
 
   async signIn(loginId: string, password: string, ip?: string) {
     const admin = await this.getUserDetails(loginId, UserRole.ADMIN);
@@ -145,6 +154,14 @@ export class AuthService {
     };
     
     const account = await this.repo.save(Object.create(accountData));
+    await this.walletRepo.save(
+  this.walletRepo.create({
+    accountId: account.id,
+    balance: 0,
+    totalEarnings: 0,
+    totalWithdrawals: 0,
+  }),
+);
 
     if (type === 'user') {
       const userDetail = Object.create({
@@ -330,6 +347,142 @@ export class AuthService {
     return result;
   };
 
+  async googleLogin(dto: GoogleLoginDto) {
+    try {
+      const payload = await this.verifyGoogleToken(dto.token);
+      const { email, name, picture } = payload;
+      
+      let existingUser = await this.repo.findOne({ 
+        where: { email, roles: UserRole.USER },
+        relations: ['userDetail']
+      });
+
+      if (existingUser) {
+        this.validateAccountStatus(existingUser, 'user');
+        await this.updateUserProfile(existingUser, picture, UserRole.USER);
+        await this.loginHistoryService.recordLogin(existingUser.id, dto.ip || 'unknown');
+        return this.buildGoogleLoginResponse(existingUser, name, UserRole.USER, false);
+      }
+
+      const user = await this.createGoogleUser(email, name, picture, UserRole.USER);
+      await this.loginHistoryService.recordLogin(user.id, dto.ip || 'unknown');
+      return this.buildGoogleLoginResponse(user, name, UserRole.USER, true);
+    } catch (error) {
+      return this.handleGoogleLoginError(error);
+    }
+  }
+
+  private async verifyGoogleToken(token: string) {
+    const ticket = await this.googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      throw new BadRequestException('Invalid Google token');
+    }
+
+    if (!payload.email_verified) {
+      throw new BadRequestException('Google email not verified');
+    }
+
+    return payload;
+  }
+
+  private async createGoogleUser(email: string, name: string, picture: string, role: UserRole) {
+    const account = this.repo.create({ 
+      email, 
+      roles: role,
+      loginType: LoginType.GOOGLE,
+      status: role === UserRole.TUTOR ? DefaultStatus.PENDING : DefaultStatus.ACTIVE
+    });
+    const user = await this.repo.save(account);
+
+    await this.createUserWallet(user.id);
+
+    if (role === UserRole.USER) {
+      await this.createUserDetails(user, email, name, picture);
+    } else {
+      await this.createTutorDetails(user, email, name, picture);
+    }
+
+    return user;
+  }
+
+  private async createUserWallet(accountId: string) {
+    await this.walletRepo.save(
+      this.walletRepo.create({
+        accountId,
+        balance: 0,
+        totalEarnings: 0,
+        totalWithdrawals: 0,
+      })
+    );
+  }
+
+  private async createUserDetails(user: any, email: string, name: string, picture: string) {
+    const userDetail = this.userDetailRepo.create({
+      accountId: user.id,
+      name: name || email.split('@')[0],
+      profile: picture
+    });
+    await this.userDetailRepo.save(userDetail);
+    user.userDetail = [userDetail];
+    await this.nodeMailerService.welcomeMail(email, name || 'User', new Date().toISOString());
+  }
+
+  private async createTutorDetails(user: any, email: string, name: string, picture: string) {
+    const tutorId = await this.generateTutorId();
+    const tutorDetail = this.tutordetailRepo.create({
+      accountId: user.id,
+      name: name || email.split('@')[0],
+      tutorId: tutorId,
+      profileImage: picture
+    });
+    await this.tutordetailRepo.save(tutorDetail);
+    user.tutorDetail = [tutorDetail];
+    await this.nodeMailerService.tutorRegistrationMail(email, name || 'Tutor', new Date().toISOString());
+  }
+
+  private async updateUserProfile(user: any, picture: string, role: UserRole) {
+    if (!picture) return;
+    
+    if (role === UserRole.USER && user.userDetail?.[0]) {
+      user.userDetail[0].profile = picture;
+      await this.userDetailRepo.save(user.userDetail[0]);
+    } else if (role === UserRole.TUTOR && user.tutorDetail?.[0]) {
+      user.tutorDetail[0].profileImage = picture;
+      await this.tutordetailRepo.save(user.tutorDetail[0]);
+    }
+  }
+
+  private async buildGoogleLoginResponse(user: any, name: string, role: UserRole, isNewUser: boolean = false) {
+    const token = await APIFeatures.assignJwtToken(user.id, this.jwtService);
+    const userName = role === UserRole.USER 
+      ? user.userDetail?.[0]?.name 
+      : user.tutorDetail?.[0]?.name;
+    
+    return { 
+      token, 
+      name: userName || name || (role === UserRole.USER ? 'User' : 'Tutor'),
+      email: user.email,
+      role: user.roles,
+      signup: isNewUser,
+      message: role === UserRole.TUTOR && user.status === DefaultStatus.PENDING 
+        ? 'Google login successful. Your tutor account is under review.' 
+        : 'Google login successful'
+    };
+  }
+
+  private handleGoogleLoginError(error: any) {
+    this.logger.error('Google login error:', error);
+    if (error instanceof BadRequestException) {
+      throw error;
+    }
+    throw new BadRequestException('Google login failed');
+  }
+
   async validateOAuthLogin(email: string, name: string, picture: string, provider: LoginType = LoginType.GOOGLE): Promise<any> {
     let user = await this.repo.findOne({ 
       where: { email, roles: UserRole.USER },
@@ -344,6 +497,15 @@ export class AuthService {
         status: DefaultStatus.ACTIVE
       });
       user = await this.repo.save(account);
+
+      await this.walletRepo.save(
+        this.walletRepo.create({
+          accountId: user.id,
+          balance: 0,
+          totalEarnings: 0,
+          totalWithdrawals: 0,
+        })
+      );
 
       const userDetail = this.userDetailRepo.create({
         accountId: user.id,
@@ -498,6 +660,9 @@ export class AuthService {
   }
 
   private async validatePassword(inputPassword: string, storedPassword: string) {
+    if (!storedPassword) {
+      throw new UnauthorizedException('Account was created via social login. Please use Google login instead.');
+    }
     const comparePassword = await bcrypt.compare(inputPassword, storedPassword);
     if (!comparePassword) {
       throw new UnauthorizedException('Password mismatched!!');
@@ -512,6 +677,68 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
+  async tutorGoogleLogin(dto: GoogleLoginDto, ip: string) {
+    try {
+      const ticket = await this.googleTutorClient.verifyIdToken({
+        idToken: dto.token,
+        audience: process.env.GOOGLE_TUTOR_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email_verified) {
+        throw new BadRequestException('Invalid Google token');
+      }
+
+      const { email, name, picture } = payload;
+      let existingTutor = await this.repo.findOne({ 
+        where: { email, roles: UserRole.TUTOR },
+        relations: ['tutorDetail']
+      });
+
+      const token = await APIFeatures.assignJwtToken(existingTutor?.id || 'temp', this.jwtService);
+
+      if (existingTutor) {
+        const finalToken = await APIFeatures.assignJwtToken(existingTutor.id, this.jwtService);
+        await this.updateUserProfile(existingTutor, picture, UserRole.TUTOR);
+        await this.loginHistoryService.recordLogin(existingTutor.id, ip);
+        
+        if (existingTutor.status !== DefaultStatus.ACTIVE) {
+          return {
+            token: finalToken,
+            name: existingTutor.tutorDetail?.[0]?.name || name,
+            email: existingTutor.email,
+            role: existingTutor.roles,
+            signup: false,
+            status: existingTutor.status,
+            message: 'Your tutor account is pending approval. Please contact admin.'
+          };
+        }
+        
+        return this.buildGoogleLoginResponse(existingTutor, name, UserRole.TUTOR, false);
+      }
+
+      const tutor = await this.createGoogleUser(email, name, picture, UserRole.TUTOR);
+      const newToken = await APIFeatures.assignJwtToken(tutor.id, this.jwtService);
+      await this.loginHistoryService.recordLogin(tutor.id, ip);
+      
+      return {
+        token: newToken,
+        name: name || email.split('@')[0],
+        email: tutor.email,
+        role: tutor.roles,
+        signup: true,
+        status: tutor.status,
+        message: 'Tutor account created successfully. Your account is under review.'
+      };
+    } catch (error) {
+      this.logger.error('Tutor Google login error:', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Tutor Google login failed');
+    }
+  }
+
   private async handleFailedLogin(account: Account) {
     account.failedLoginAttempts = (account.failedLoginAttempts || 0) + 1;
     
@@ -524,7 +751,6 @@ export class AuthService {
   }
 private async generateTutorId(): Promise<string> {
   const today = new Date();
-  // eslint-disable-next-line sonarjs/prefer-string-replace-all
   const dateStr = today.toLocaleDateString('en-CA').replace(/-/g, '');
   const prefix = 'WIZ';
 
@@ -537,12 +763,9 @@ private async generateTutorId(): Promise<string> {
 
   let sequence = 1001; 
 
-  if (lastTutor?.tutorId) {
-    
-    const lastSequence = Number.parseInt(lastTutor.tutorId.split('/')[1], 10);
-    if (!Number.isNaN(lastSequence)) {
-      sequence = lastSequence + 1; 
-    }
+  const lastSequence = lastTutor?.tutorId ? Number.parseInt(lastTutor.tutorId.split('/')[1], 10) : Number.NaN;
+  if (!Number.isNaN(lastSequence)) {
+    sequence = lastSequence + 1; 
   }
 
   return `${prefix}${dateStr}/${sequence}`;

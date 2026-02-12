@@ -22,10 +22,22 @@ export class BankDetail {
   swiftCode: string;
 
   @Column({ type: 'varchar', length: 100 })
+  bankName: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
   branchName: string;
 
-  @Column({ type: 'varchar', length: 20, nullable: true })
-  branchCode: string;
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  passbookFile: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  passbookFilePath: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  documentFile: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  documentFilePath: string;
 
   @CreateDateColumn()
   createdAt: Date;

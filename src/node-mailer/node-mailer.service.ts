@@ -539,7 +539,7 @@ export class NodeMailerService {
     }
   }
 
-  async sendSessionBookingConfirmation(email: string, studentName: string, tutorName: string, sessionDate: string, startTime: string, endTime: string, sessionType: string = 'lesson') {
+  async sendSessionBookingConfirmation(email: string, studentName: string, tutorName: string, sessionDate: string, startTime: string, endTime: string, sessionType: string = 'lesson', zoomLink?: string, meetingId?: string, passcode?: string) {
     try {
       return await this.mailService.sendMail({
         to: email,
@@ -559,6 +559,20 @@ export class NodeMailerService {
               <p style="margin: 5px 0;"><strong>Time:</strong> ${startTime} - ${endTime}</p>
               <p style="margin: 5px 0;"><strong>Type:</strong> ${sessionType === 'trial' ? 'Trial Lesson' : 'Regular Lesson'}</p>
             </div>
+            ${zoomLink ? `
+            <div style="background-color: #e7f3ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #007bff;">
+              <h3 style="margin: 0 0 15px 0; color: #0056b3;">🎥 Zoom Meeting Details</h3>
+              <p style="margin: 5px 0;"><strong>Join URL:</strong> <a href="${zoomLink}" style="color: #007bff; word-break: break-all;">${zoomLink}</a></p>
+              ${meetingId ? `<p style="margin: 5px 0;"><strong>Meeting ID:</strong> ${meetingId}</p>` : ''}
+              ${passcode ? `<p style="margin: 5px 0;"><strong>Passcode:</strong> ${passcode}</p>` : ''}
+              <div style="background-color: #fff; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                <p style="margin: 0; font-size: 12px; color: #666;">💡 <strong>Tips:</strong></p>
+                <p style="margin: 5px 0; font-size: 12px; color: #666;">• Join 5 minutes early to test your audio/video</p>
+                <p style="margin: 5px 0; font-size: 12px; color: #666;">• Ensure stable internet connection</p>
+                <p style="margin: 5px 0; font-size: 12px; color: #666;">• Have your learning materials ready</p>
+              </div>
+            </div>
+            ` : ''}
             <p style="text-align: center;">We'll send you reminder notifications before your session. If you need to reschedule or cancel, please do so at least 2 hours before the session time.</p>
             <div style="color: #6c757d; font-size: 14px; text-align: center; margin-top: 20px;">
               <p>Thank you,<br />Wiznovy Team</p>
@@ -685,6 +699,219 @@ export class NodeMailerService {
       });
     } catch (error) {
       this.logger.error('Error sending new message notification:', error);
+    }
+  }
+
+  async sendPayoutStatusEmail(email: string, tutorName: string, amount: number, status: 'APPROVED' | 'REJECTED', transactionId?: string, rejectionReason?: string) {
+    try {
+      const statusColors = {
+        'APPROVED': '#28a745',
+        'REJECTED': '#dc3545'
+      };
+
+      const statusTitle = status === 'APPROVED' ? 'Payout Approved' : 'Payout Rejected';
+      
+      return await this.mailService.sendMail({
+        to: email,
+        subject: `${statusTitle} - Wiznovy`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; max-width: 600px; margin: 0 auto; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
+            <div style="background: ${statusColors[status]}; padding: 30px; border-radius: 4px; color: #fff; text-align: center; margin: 20px 0px;">
+              <div style="font-size: 25px;">${statusTitle}</div>
+            </div>
+            <h2 style="text-align: center;">Payout Request Update</h2>
+            <p style="text-align: center;">Dear ${tutorName},</p>
+            <p style="text-align: center;">Your payout request for <strong>$${amount}</strong> has been <strong>${status.toLowerCase()}</strong>.</p>
+            
+            ${status === 'APPROVED' ? `
+            <div style="background-color: #d4edda; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
+              <p style="margin: 5px 0;"><strong>Amount:</strong> $${amount}</p>
+              ${transactionId ? `<p style="margin: 5px 0;"><strong>Transaction ID:</strong> ${transactionId}</p>` : ''}
+              <p style="margin: 5px 0;"><strong>Status:</strong> Processed</p>
+            </div>
+            <p style="text-align: center;">The funds have been transferred to your registered bank account. Please allow 2-5 business days for the amount to reflect in your account.</p>
+            ` : `
+            <div style="background-color: #f8d7da; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc3545;">
+              <p style="margin: 5px 0;"><strong>Amount:</strong> $${amount}</p>
+              <p style="margin: 5px 0;"><strong>Status:</strong> Rejected</p>
+              ${rejectionReason ? `<p style="margin: 5px 0;"><strong>Reason:</strong> ${rejectionReason}</p>` : ''}
+            </div>
+            <p style="text-align: center;">If you have any questions regarding this rejection, please contact our support team.</p>
+            `}
+            
+            <div style="color: #6c757d; font-size: 14px; text-align: center; margin-top: 20px;">
+              <p>Thank you,<br />Wiznovy Team</p>
+            </div>
+          </div>
+        </div>
+        `,
+      });
+    } catch (error) {
+      this.logger.error('Error sending payout status email:', error);
+    }
+  }
+
+  async sendCourseEnrollmentNotification(email: string, tutorName: string, studentName: string, courseName: string, amount: number) {
+    try {
+      return await this.mailService.sendMail({
+        to: email,
+        subject: `New Course Enrollment - ${courseName}`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; max-width: 600px; margin: 0 auto; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
+            <div style="background: #28a745; padding: 30px; border-radius: 4px; color: #fff; text-align: center; margin: 20px 0px;">
+              <div style="font-size: 25px;">New Course Enrollment!</div>
+            </div>
+            <h2 style="text-align: center;">Congratulations!</h2>
+            <p style="text-align: center;">Dear ${tutorName},</p>
+            <p style="text-align: center;">Great news! A new student has enrolled in your course.</p>
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 5px 0;"><strong>Student:</strong> ${studentName}</p>
+              <p style="margin: 5px 0;"><strong>Course:</strong> ${courseName}</p>
+              <p style="margin: 5px 0;"><strong>Amount:</strong> $${amount}</p>
+              <p style="margin: 5px 0;"><strong>Enrollment Date:</strong> ${new Date().toLocaleDateString()}</p>
+            </div>
+            <p style="text-align: center;">You can now start engaging with your new student. Check your dashboard for more details.</p>
+            <div style="color: #6c757d; font-size: 14px; text-align: center; margin-top: 20px;">
+              <p>Thank you,<br />Wiznovy Team</p>
+            </div>
+          </div>
+        </div>
+        `,
+      });
+    } catch (error) {
+      this.logger.error('Error sending course enrollment notification:', error);
+    }
+  }
+
+  async sendUserSessionConfirmation(email: string, userName: string, tutorName: string, sessionDate: string, startTime: string, endTime: string, zoomDetails: { joinUrl?: string; meetingId?: string; passcode?: string }) {
+    try {
+      console.log('📧 USER EMAIL - Zoom Details:', {
+        email,
+        userName,
+        tutorName,
+        zoomDetails: {
+          joinUrl: zoomDetails?.joinUrl || 'NOT_PROVIDED',
+          meetingId: zoomDetails?.meetingId || 'NOT_PROVIDED',
+          passcode: zoomDetails?.passcode || 'NOT_PROVIDED'
+        }
+      });
+      return await this.mailService.sendMail({
+        to: email,
+        subject: `Session Confirmed - Join Details - Wiznovy`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; max-width: 600px; margin: 0 auto; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
+            <div style="background: #28a745; padding: 30px; border-radius: 4px; color: #fff; text-align: center; margin: 20px 0px;">
+              <div style="font-size: 25px;">📚 Session Confirmed!</div>
+            </div>
+            <h2 style="text-align: center;">Ready to Learn!</h2>
+            <p style="text-align: center;">Dear ${userName},</p>
+            <p style="text-align: center;">Your session has been confirmed and payment processed successfully!</p>
+            
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #495057;">📅 Session Details</h3>
+              <p style="margin: 5px 0;"><strong>Tutor:</strong> ${tutorName}</p>
+              <p style="margin: 5px 0;"><strong>Date:</strong> ${sessionDate}</p>
+              <p style="margin: 5px 0;"><strong>Time:</strong> ${startTime} - ${endTime}</p>
+              <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: #28a745;">✅ Confirmed & Paid</span></p>
+            </div>
+            
+            <div style="background-color: #e7f3ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #007bff;">
+              <h3 style="margin: 0 0 15px 0; color: #0056b3;">🎥 Join Your Session</h3>
+              ${zoomDetails.joinUrl ? `<p style="margin: 5px 0;"><strong>Join URL:</strong> <a href="${zoomDetails.joinUrl}" style="color: #007bff; word-break: break-all;">${zoomDetails.joinUrl}</a></p>` : ''}
+              ${zoomDetails.meetingId ? `<p style="margin: 5px 0;"><strong>Meeting ID:</strong> <span style="font-family: monospace; background: #f8f9fa; padding: 2px 6px; border-radius: 3px;">${zoomDetails.meetingId}</span></p>` : ''}
+              ${zoomDetails.passcode ? `<p style="margin: 5px 0;"><strong>Passcode:</strong> <span style="font-family: monospace; background: #f8f9fa; padding: 2px 6px; border-radius: 3px;">${zoomDetails.passcode}</span></p>` : ''}
+              
+              <div style="background-color: #fff; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                <p style="margin: 0 0 10px 0; font-weight: bold; color: #0056b3;">📋 Student Checklist:</p>
+                <p style="margin: 5px 0; font-size: 14px;">✓ Join 5 minutes early</p>
+                <p style="margin: 5px 0; font-size: 14px;">✓ Test your microphone and camera</p>
+                <p style="margin: 5px 0; font-size: 14px;">✓ Have your learning materials ready</p>
+                <p style="margin: 5px 0; font-size: 14px;">✓ Ensure stable internet connection</p>
+              </div>
+            </div>
+            
+            ${zoomDetails.joinUrl ? `<div style="text-align: center; margin: 30px 0;">
+              <a href="${zoomDetails.joinUrl}" style="display: inline-block; padding: 15px 30px; background-color: #28a745; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">📚 Join Session</a>
+            </div>` : ''}
+            
+            <div style="color: #6c757d; font-size: 14px; text-align: center; margin-top: 20px;">
+              <p>Questions? Contact our support team anytime.</p>
+              <p>Thank you,<br />Wiznovy Team</p>
+            </div>
+          </div>
+        </div>
+        `,
+      });
+    } catch (error) {
+      this.logger.error('Error sending user session confirmation:', error);
+    }
+  }
+
+  async sendTutorSessionConfirmation(email: string, tutorName: string, studentName: string, sessionDate: string, startTime: string, endTime: string, zoomDetails: { startUrl?: string; meetingId?: string; passcode?: string }) {
+    try {
+      console.log('📧 TUTOR EMAIL - Zoom Details:', {
+        email,
+        tutorName,
+        studentName,
+        zoomDetails: {
+          startUrl: zoomDetails?.startUrl || 'NOT_PROVIDED',
+          meetingId: zoomDetails?.meetingId || 'NOT_PROVIDED',
+          passcode: zoomDetails?.passcode || 'NOT_PROVIDED'
+        }
+      });
+      return await this.mailService.sendMail({
+        to: email,
+        subject: `New Session Booked - Host Details - Wiznovy`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; max-width: 600px; margin: 0 auto; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
+            <div style="background: #007bff; padding: 30px; border-radius: 4px; color: #fff; text-align: center; margin: 20px 0px;">
+              <div style="font-size: 25px;">🎯 New Session Booked!</div>
+            </div>
+            <h2 style="text-align: center;">Ready to Teach!</h2>
+            <p style="text-align: center;">Dear ${tutorName},</p>
+            <p style="text-align: center;">Great news! A new session has been booked with you.</p>
+            
+            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #495057;">📅 Session Details</h3>
+              <p style="margin: 5px 0;"><strong>Student:</strong> ${studentName}</p>
+              <p style="margin: 5px 0;"><strong>Date:</strong> ${sessionDate}</p>
+              <p style="margin: 5px 0;"><strong>Time:</strong> ${startTime} - ${endTime}</p>
+              <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: #28a745;">✅ Confirmed & Paid</span></p>
+            </div>
+            
+            <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
+              <h3 style="margin: 0 0 15px 0; color: #856404;">🎥 Host Your Session</h3>
+              ${zoomDetails.startUrl ? `<p style="margin: 5px 0;"><strong>Start Meeting:</strong> <a href="${zoomDetails.startUrl}" style="color: #856404; word-break: break-all;">${zoomDetails.startUrl}</a></p>` : ''}
+              ${zoomDetails.meetingId ? `<p style="margin: 5px 0;"><strong>Meeting ID:</strong> <span style="font-family: monospace; background: #fff; padding: 2px 6px; border-radius: 3px;">${zoomDetails.meetingId}</span></p>` : ''}
+              ${zoomDetails.passcode ? `<p style="margin: 5px 0;"><strong>Passcode:</strong> <span style="font-family: monospace; background: #fff; padding: 2px 6px; border-radius: 3px;">${zoomDetails.passcode}</span></p>` : ''}
+              
+              <div style="background-color: #fff; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                <p style="margin: 0 0 10px 0; font-weight: bold; color: #856404;">📋 Tutor Checklist:</p>
+                <p style="margin: 5px 0; font-size: 14px;">✓ Join 10 minutes early to set up</p>
+                <p style="margin: 5px 0; font-size: 14px;">✓ Prepare lesson materials</p>
+                <p style="margin: 5px 0; font-size: 14px;">✓ Test screen sharing if needed</p>
+                <p style="margin: 5px 0; font-size: 14px;">✓ Have backup contact ready</p>
+              </div>
+            </div>
+            
+            ${zoomDetails.startUrl ? `<div style="text-align: center; margin: 30px 0;">
+              <a href="${zoomDetails.startUrl}" style="display: inline-block; padding: 15px 30px; background-color: #007bff; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">🎯 Start Teaching</a>
+            </div>` : ''}
+            
+            <div style="color: #6c757d; font-size: 14px; text-align: center; margin-top: 20px;">
+              <p>Questions? Contact our support team anytime.</p>
+              <p>Thank you,<br />Wiznovy Team</p>
+            </div>
+          </div>
+        </div>
+        `,
+      });
+    } catch (error) {
+      this.logger.error('Error sending tutor session confirmation:', error);
     }
   }
 }

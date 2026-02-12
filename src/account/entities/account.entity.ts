@@ -6,6 +6,7 @@ import { RatingFeedback } from 'src/rating-feedback/entities/rating-feedback.ent
 import { Rating } from 'src/rating/entities/rating.entity';
 import { StaffDetail } from 'src/staff-details/entities/staff-detail.entity';
 import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
+import { TutorPayout } from 'src/tutor-payout/entities/tutor-payout.entity';
 import { UserDetail } from 'src/user-details/entities/user-detail.entity';
 import { UserPermission } from 'src/user-permissions/entities/user-permission.entity';
 import { UserProgress } from 'src/user-progress/entities/user-progress.entity';
@@ -96,4 +97,7 @@ export class Account {
 
   @OneToMany(() => UserPurchase, (userPurchase) => userPurchase.account)
   userPurchases: UserPurchase[];
+
+  @OneToMany(() => TutorPayout, (tutorPayout) => tutorPayout.tutor)
+  tutorPayouts: TutorPayout[];
 }

@@ -72,6 +72,20 @@ export class UserLoginDto {
   ip: string;
 }
 
+export class GoogleLoginDto {
+  @ApiProperty({ example: 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjdkYzAyYjg4...' })
+  @IsNotEmpty()
+  @IsString()
+  token: string;
+
+  
+
+  @ApiPropertyOptional({ example: '' })
+  @IsOptional()
+  @IsString()
+  ip: string;
+}
+
 export class UserRegisterDto {
   @ApiProperty({ example: 'user@example.com' })
   @IsNotEmpty()

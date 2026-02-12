@@ -1,4 +1,5 @@
 import { Account } from 'src/account/entities/account.entity';
+import { ContactUsCategory } from 'src/contact-us-category/entities/contact-us-category.entity';
 import {
   Column,
   CreateDateColumn,
@@ -15,11 +16,14 @@ export class ContactUs {
   @Column({ type: 'uuid', nullable: true })
   accountId: string;
 
+  @Column({ type: 'uuid', nullable: false })
+  categoryId: string;
+
   @Column({ type: 'varchar', length: 55, nullable: true })
   firstName: string;
 
  @Column({ type: 'varchar', length: 55, nullable: true })
-  LastName: string;
+  lastName: string;
 
   
   @Column({ type: 'varchar', length:100, nullable: true })
@@ -28,9 +32,7 @@ export class ContactUs {
   @Column({ type: 'varchar', length: 100, nullable: true })
   phoneNumber: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  code: string;
-
+  
   
   @Column({ type: 'varchar', length: 100, nullable: true })
   message: string;
@@ -45,4 +47,7 @@ export class ContactUs {
     onUpdate: 'CASCADE',
   })
   account: Account[];
+
+  @ManyToOne(() => ContactUsCategory, { eager: true })
+  category: ContactUsCategory;
 }

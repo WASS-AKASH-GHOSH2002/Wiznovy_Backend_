@@ -6,10 +6,11 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { CityService } from './city.service';
-import { CreateCityDto, UpdateCityDto, CityPaginationDto, CityStatusDto } from './dto/create-city.dto';
+import { CreateCityDto, UpdateCityDto, CityPaginationDto, CityStatusDto, BulkCityStatusDto } from './dto/create-city.dto';
 
 @Controller('city')
 export class CityController {
@@ -42,7 +43,7 @@ export class CityController {
     return this.cityService.update(+id, updateCityDto);
   }
 
-  @Patch('status/:id')
+  @Put('status/:id')
   updateStatus(@Param('id') id: string, @Body() dto: CityStatusDto) {
     return this.cityService.updateStatus(+id, dto);
   }
@@ -50,5 +51,10 @@ export class CityController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.cityService.remove(+id);
+  }
+
+  @Put('bulk-status')
+  bulkUpdateStatus(@Body() dto: BulkCityStatusDto) {
+    return this.cityService.bulkUpdateStatus(dto);
   }
 }

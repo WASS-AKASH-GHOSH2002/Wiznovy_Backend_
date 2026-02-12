@@ -12,10 +12,10 @@ import { diskStorage } from 'multer';
 import { extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { CourseStatusDto } from './dto/course-status.dto';
-
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { courseImageFileFilter } from '../utils/fileUpload.utils';
+import { AdminProtected } from '../admin-action-log/decorators/admin-protected.decorator';
 
 @Controller('course')
 export class CourseController {
@@ -32,7 +32,10 @@ export class CourseController {
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
         files: 2,
-        fields: 10
+        fields: 20,
+        fieldNameSize: 100,
+        fieldSize: 2097152,
+        parts: 25
       },
     };
   }
@@ -64,7 +67,8 @@ export class CourseController {
 
   @Post('admin')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @AdminProtected()
   @UsePipes(new ValidationPipe({ transform: true }))
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -84,8 +88,6 @@ export class CourseController {
   ) {
     return this.courseService.create(createCourseDto, user.id, files);
   }
-
-
 
 
   @Get('admin')
@@ -141,11 +143,36 @@ export class CourseController {
 
 
 
+  @Patch('admin/:id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'image', maxCount: 1 },
+      { name: 'thumbnail', maxCount: 1 }
+    ], CourseController.getStorageConfig('./uploads/Course/thumbnails'))
+  )
+  Update(
+    @Param('id') id: string,
+    @Body() updateCourseDto: UpdateCourseDto,
+    @CurrentUser() user: Account,
+    @UploadedFiles(
+      new ParseFilePipe({
+        validators: [],
+        fileIsRequired: false,
+      }),
+    ) files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }
+  ) {
+    return this.courseService.update(id, updateCourseDto, user.id, files);
+  }
+
 
   @Patch('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF,UserRole.TUTOR)
+  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
   @CheckPermissions([PermissionAction.UPDATE, 'course'])
+  @AdminProtected()
   updateStatus(
     @Param('id') id: string,
     @Body() dto: CourseStatusDto
@@ -189,7 +216,7 @@ export class CourseController {
     return this.courseService.thumbnail(file.path, course);
   }
 
-  @Delete(':id')
+  @Delete('admin/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.DELETE, 'course'])

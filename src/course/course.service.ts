@@ -4,9 +4,10 @@ import { Repository, } from 'typeorm';
 import { Course } from './entities/course.entity';
 import { Account } from '../account/entities/account.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AdminActionLogService } from '../admin-action-log/admin-action-log.service';
 
 import { CreateCourseDto, UpdateCourseDto, CoursePaginationDto } from './dto/create-course.dto';
-import { DefaultStatus, UserRole, NotificationType, AccessTypes, PurchaseType, PaymentStatus, CourseStatus } from '../enum';
+import { DefaultStatus, UserRole, NotificationType, AccessTypes, PurchaseType, PaymentStatus, CourseStatus, AdminActionType, AdminActionTargetType } from '../enum';
 import { join } from 'node:path';
 import { promises as fs } from 'node:fs';
 import { CourseStatusDto } from './dto/course-status.dto';
@@ -25,7 +26,7 @@ export class CourseService {
     @InjectRepository(TutorDetail)
     private readonly tutorRepo: Repository<TutorDetail>,
     private readonly notificationsService: NotificationsService,
-   
+    private readonly adminActionLogService: AdminActionLogService,
   ) { }
 
   async create(dto: CreateCourseDto, currentUserId: string, files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }) {
@@ -400,7 +401,7 @@ async thumbnail(img: string, result: Course) {
     return this.repo.save(courseObj);
   }
 
-  async updateStatus(id: string, dto: CourseStatusDto) {
+  async updateStatus(id: string, dto: CourseStatusDto, adminId?: string) {
     const result = await this.repo.findOne({ where: { id } });
     if (!result) {
       throw new NotFoundException('Course not found!');
@@ -410,9 +411,24 @@ async thumbnail(img: string, result: Course) {
     result.status = dto.status;
     const updatedCourse = await this.repo.save(result);
 
-  
     if (oldStatus !== dto.status) {
       await this.notifyTutorStatusChange(result.tutorId, result.name, dto.status);
+      
+      if (adminId) {
+        const actionType = dto.status === CourseStatus.APPROVED 
+          ? AdminActionType.COURSE_APPROVED 
+          : dto.status === CourseStatus.REJECTED 
+          ? AdminActionType.COURSE_REJECTED 
+          : AdminActionType.COURSE_UPDATED;
+        
+        await this.adminActionLogService.log(
+          adminId,
+          actionType,
+          id,
+          AdminActionTargetType.COURSE,
+          `Course "${result.name}" status changed from ${oldStatus} to ${dto.status}`
+        );
+      }
     }
 
     return updatedCourse;

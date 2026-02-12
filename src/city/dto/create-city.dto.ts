@@ -45,6 +45,16 @@ export class CityStatusDto {
   status: DefaultStatus;
 }
 
+export class BulkCityStatusDto {
+  @IsNotEmpty()
+  @IsNumber({}, { each: true })
+  ids: number[];
+
+  @IsNotEmpty()
+  @IsEnum(DefaultStatus)
+  status: DefaultStatus;
+}
+
 export class CityPaginationDto {
   @IsNotEmpty()
   @Type(() => Number)

@@ -20,11 +20,7 @@ export class CreateTopicDto {
   @MaxLength(255)
   name: string;
 
-  @ApiPropertyOptional({ example: 'Learn the fundamentals of nutrition', maxLength: 1000 })
-  @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  description: string;
+ 
 }
 
 export class UpdateTopicDto {
@@ -34,11 +30,6 @@ export class UpdateTopicDto {
   @MaxLength(255)
   name: string;
 
-  @ApiPropertyOptional({ example: 'Advanced nutrition concepts and practices', maxLength: 1000 })
-  @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  description: string;
 
   @ApiPropertyOptional({ enum: DefaultStatus, example: DefaultStatus.ACTIVE })
   @IsOptional()
@@ -78,6 +69,18 @@ export class TopicPaginationDto {
 
   @ApiPropertyOptional({ enum: DefaultStatus })
   @IsOptional()
+  @IsEnum(DefaultStatus)
+  status: DefaultStatus;
+}
+
+export class BulkTopicStatusDto {
+  @ApiProperty({ example: ['id1', 'id2'], description: 'Array of topic IDs' })
+  @IsNotEmpty()
+  @IsString({ each: true })
+  ids: string[];
+
+  @ApiProperty({ enum: DefaultStatus, example: DefaultStatus.ACTIVE })
+  @IsNotEmpty()
   @IsEnum(DefaultStatus)
   status: DefaultStatus;
 }

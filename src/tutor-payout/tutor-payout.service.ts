@@ -26,7 +26,7 @@ export class TutorPayoutService {
   ) {}
 
   async createPayout(tutorId: string, dto: CreatePayoutDto) {
-    // Check if tutor has pending payout
+    
     const pendingPayout = await this.payoutRepo.findOne({
       where: { tutorId, status: PayoutStatus.PENDING }
     });
@@ -35,13 +35,13 @@ export class TutorPayoutService {
       throw new BadRequestException('You already have a pending payout request');
     }
 
-    // Check tutor wallet balance
-    const wallet = await this.walletRepo.findOne({
+    
+    let wallet = await this.walletRepo.findOne({
       where: { accountId: tutorId }
     });
 
-    if (!wallet) {
-      throw new NotFoundException('Wallet not found');
+    if(!wallet){
+      wallet = await this.walletRepo.save(this.walletRepo.create({ accountId: tutorId }));
     }
 
     const walletBalance = wallet.balance || 0;
@@ -53,7 +53,7 @@ export class TutorPayoutService {
       throw new BadRequestException('Minimum payout amount is $10');
     }
 
-    // Check if tutor has bank details
+   
     const bankDetails = await this.bankDetailRepo.findOne({
       where: { tutorId }
     });
@@ -62,11 +62,25 @@ export class TutorPayoutService {
       throw new BadRequestException('Please add your bank details before requesting payout');
     }
 
+ 
+    if (!bankDetails.accountNo || !bankDetails.accountHolderName || !bankDetails.ifscCode || !bankDetails.bankName) {
+      throw new BadRequestException('Please complete all required bank details (Account Number, Holder Name, IFSC Code, Bank Name)');
+    }
+
+ 
+    if (dto.bankDetailId && dto.bankDetailId !== bankDetails.id) {
+      throw new BadRequestException('Invalid bank detail ID provided');
+    }
+
+    const tutor = await this.accountRepo.findOne({
+      where: { id: tutorId },
+      relations: ['tutorDetail']
+    });
+
     const payout = this.payoutRepo.create({
       tutorId,
       amount: dto.amount,
-      paymentMethod: dto.paymentMethod,
-      paymentDetails: dto.paymentDetails,
+      bankDetailId: dto.bankDetailId,
       status: PayoutStatus.PENDING
     });
 
@@ -79,15 +93,45 @@ export class TutorPayoutService {
       accountId: tutorId
     });
 
+    if (tutor?.email) {
+      const tutorName = tutor.tutorDetail?.[0]?.name || 'Tutor';
+      // Email notification can be added later
+    }
+
     return { message: 'Payout request created successfully', payout: savedPayout };
   }
 
   async getAllPayouts(dto: PayoutPaginationDto) {
     const query = this.payoutRepo.createQueryBuilder('payout')
-      .leftJoinAndSelect('payout.tutor', 'tutor')
-      .leftJoinAndSelect('tutor.tutorDetail', 'tutorDetail')
-      .leftJoinAndSelect('payout.approver', 'approver')
-      .leftJoinAndSelect('approver.staffDetail', 'staffDetail');
+      .leftJoin('payout.tutor', 'tutor')
+      .leftJoin('tutor.tutorDetail', 'tutorDetail')
+      .leftJoin('payout.approver', 'approver')
+      .leftJoin('approver.staffDetail', 'staffDetail')
+      .leftJoin('payout.bankDetail', 'bankDetail')
+      .select([
+        'payout.id',
+        'payout.amount',
+        'payout.paymentMethod',
+        'payout.status',
+        'payout.transactionId',
+        'payout.notes',
+        'payout.createdAt',
+        'payout.approvedAt',
+        'payout.paidAt',
+        'payout.rejectionReason',
+        'tutor.id',
+        'tutor.email',
+        'tutorDetail.name',
+        'tutorDetail.profileImage',
+        'approver.id',
+        'staffDetail.name',
+        'bankDetail.accountNo',
+        'bankDetail.accountHolderName',
+        'bankDetail.ifscCode',
+        'bankDetail.bankName',
+        'bankDetail.branchName',
+        'bankDetail.swiftCode', 
+      ]);
 
     if (dto.status) {
       query.andWhere('payout.status = :status', { status: dto.status });
@@ -101,6 +145,7 @@ export class TutorPayoutService {
       query.andWhere(
         new Brackets((qb) => {
           qb.where('tutorDetail.name LIKE :keyword', { keyword: `%${dto.keyword}%` })
+          .orWhere('tutor.email LIKE :keyword', { keyword: `%${dto.keyword}%` })
             .orWhere('payout.amount LIKE :keyword', { keyword: `%${dto.keyword}%` });
         })
       );
@@ -131,10 +176,40 @@ export class TutorPayoutService {
   }
 
   async getPayoutDetails(id: string) {
-    const payout = await this.payoutRepo.findOne({
-      where: { id },
-      relations: ['tutor', 'tutor.tutorDetail', 'approver', 'approver.staffDetail']
-    });
+    const payout = await this.payoutRepo.createQueryBuilder('payout')
+       .leftJoin('payout.tutor', 'tutor')
+      .leftJoin('tutor.tutorDetail', 'tutorDetail')
+      .leftJoin('payout.approver', 'approver')
+      .leftJoin('payout.bankDetail', 'bankDetail')
+      .select([
+        'payout.id',
+        'payout.amount',
+        'payout.paymentMethod',
+        'payout.status',
+        'payout.transactionId',
+        'payout.notes',
+        'payout.createdAt',
+        'payout.approvedAt',
+        'payout.paidAt',
+        'payout.rejectionReason',
+        'tutor.id',
+        'tutor.email',
+        'tutorDetail.name',
+        'tutorDetail.profileImage',
+        'approver.id',
+        'approver.email',
+        'bankDetail.accountNo',
+        'bankDetail.accountHolderName',
+        'bankDetail.ifscCode',
+        'bankDetail.bankName',
+        'bankDetail.branchName',
+        'bankDetail.swiftCode',
+        'bankDetail.passbookFile',
+        'bankDetail.documentFile',
+
+      ])
+      .where('payout.id = :id', { id })
+      .getOne();
 
     if (!payout) {
       throw new NotFoundException('Payout request not found');
@@ -157,23 +232,62 @@ export class TutorPayoutService {
       throw new BadRequestException('Only pending payouts can be approved');
     }
 
-    payout.status = PayoutStatus.APPROVED;
+ 
+    const wallet = await this.walletRepo.findOne({
+      where: { accountId: payout.tutorId }
+    });
+
+    if (!wallet) {
+      throw new NotFoundException('Wallet not found');
+    }
+
+    if (Number(wallet.balance) < Number(payout.amount)) {
+      throw new BadRequestException(`Insufficient wallet balance. Available: $${wallet.balance}, Requested: $${payout.amount}`);
+    }
+
+    
+    wallet.balance = Number(wallet.balance) - Number(payout.amount);
+    wallet.totalWithdrawals = Number(wallet.totalWithdrawals || 0) + Number(payout.amount);
+    await this.walletRepo.save(wallet);
+
+    payout.status = dto.status ;
     payout.approvedBy = approvedBy;
     payout.approvedAt = new Date();
+    payout.paidAt = dto.paidAt ? new Date(dto.paidAt + 'Z') : new Date();
+    
+    if (dto.transactionId) {
+      payout.transactionId = dto.transactionId;
+    }
+    
+    if (dto.notes) {
+      payout.notes = dto.notes;
+    }
+    
+    if (dto.paymentMethod) {
+      payout.paymentMethod = dto.paymentMethod;
+    }
 
     await this.payoutRepo.save(payout);
 
-    // Send notification to tutor
     await this.notificationsService.create({
       title: 'Payout Approved',
-      desc: `Your payout request for $${payout.amount} has been approved and will be processed soon`,
+      desc: `Your payout request for $${payout.amount} has been approved and processed`,
       type: 'PAYOUT_APPROVED',
       accountId: payout.tutorId
     });
 
-    
+    if (payout.tutor?.email) {
+      const tutorName = payout.tutor.tutorDetail?.[0]?.name || 'Tutor';
+      this.nodeMailerService.sendPayoutStatusEmail(
+        payout.tutor.email,
+        tutorName,
+        payout.amount,
+        'APPROVED',
+        dto.transactionId
+      ).catch(err => console.error('Email send failed:', err));
+    }
 
-    return { message: 'Payout approved successfully', payout };
+    return { message: 'Payout approved and processed successfully' };
   }
 
   async rejectPayout(id: string, rejectedBy: string, dto: RejectPayoutDto) {
@@ -197,7 +311,6 @@ export class TutorPayoutService {
 
     await this.payoutRepo.save(payout);
 
-    // Send notification to tutor
     await this.notificationsService.create({
       title: 'Payout Rejected',
       desc: `Your payout request for $${payout.amount} has been rejected. Reason: ${dto.rejectionReason}`,
@@ -205,13 +318,17 @@ export class TutorPayoutService {
       accountId: payout.tutorId
     });
 
-    // Send email notification for payout rejection
-    await this.nodeMailerService.sendAccountStatusEmail(
-      payout.tutor.email,
-      'TUTOR',
-      'PAYOUT_REJECTED',
-      `Your payout request for $${payout.amount} has been rejected. Reason: ${dto.rejectionReason}`
-    );
+    if (payout.tutor?.email) {
+      const tutorName = payout.tutor.tutorDetail?.[0]?.name || 'Tutor';
+      await this.nodeMailerService.sendPayoutStatusEmail(
+        payout.tutor.email,
+        tutorName,
+        payout.amount,
+        'REJECTED',
+        undefined,
+        dto.rejectionReason
+      );
+    }
 
     return { message: 'Payout rejected successfully', payout };
   }

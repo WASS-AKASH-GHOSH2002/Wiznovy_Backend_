@@ -15,7 +15,6 @@ export class PaginationDto {
   @IsNotEmpty()
   @Type(() => Number)
   @IsNumber()
-  @Type(() => Number)
   @Min(9)
   @Max(100)
   limit: number;
@@ -23,7 +22,6 @@ export class PaginationDto {
   @IsNotEmpty()
   @Type(() => Number)
   @IsNumber()
-  @Type(() => Number)
   @Min(0)
   offset: number;
 

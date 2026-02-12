@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
-
 import { Type } from 'class-transformer';
 import { PaymentMethod, PayoutStatus } from 'src/enum';
 
@@ -11,15 +10,9 @@ export class CreatePayoutDto {
   @Min(10)
   amount: number;
 
-  @ApiProperty({ enum: PaymentMethod })
-  @IsNotEmpty()
-  @IsEnum(PaymentMethod)
-  paymentMethod: PaymentMethod;
-
-  @ApiProperty({ example: 'Bank: ABC Bank, Account: 123456789' })
   @IsNotEmpty()
   @IsString()
-  paymentDetails: string;
+  bankDetailId: string;
 }
 
 export class PayoutPaginationDto {
@@ -36,27 +29,27 @@ export class PayoutPaginationDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  keyword?: string;
+  keyword: string;
 
   @ApiProperty({ enum: PayoutStatus, required: false })
   @IsOptional()
   @IsEnum(PayoutStatus)
-  status?: PayoutStatus;
+  status: PayoutStatus;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  tutorName?: string;
+  tutorName: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  fromDate?: string;
+  fromDate: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  toDate?: string;
+  toDate: string;
 }
 
 export class ApprovePayoutDto {
@@ -64,6 +57,26 @@ export class ApprovePayoutDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({ example: 'txn_1234567890' })
+  @IsOptional()
+  @IsString()
+  transactionId?: string;
+
+  @ApiProperty({ enum: PaymentMethod })
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
+
+  @ApiProperty({ example: '2024-01-15T10:30:00Z' })
+  @IsOptional()
+  @IsString()
+  paidAt?: string;
+
+  @ApiProperty({ enum: PayoutStatus })
+  @IsOptional()
+  @IsEnum(PayoutStatus)
+  status?: PayoutStatus;
 }
 
 export class RejectPayoutDto {

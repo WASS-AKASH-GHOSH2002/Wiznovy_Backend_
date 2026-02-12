@@ -1,5 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { CreateSubjectDto, SubjectPaginationDto, UpdateStatusDto } from './dto/create-subject.dto';
+import { CreateSubjectDto, SubjectPaginationDto, UpdateStatusDto, BulkSubjectStatusDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
@@ -42,7 +42,7 @@ return this.repo.save(createSubjectDto)
       [
         'subject.id',
         'subject.name',
-        'subject.description',
+       
         'subject.image',
         'subject.imagePath',
         'subject.status',
@@ -62,9 +62,7 @@ return this.repo.save(createSubjectDto)
     
       if (dto.status) {
           query.andWhere('subject.status = :status', { status: dto.status });
-        } else {
-          query.andWhere('subject.status = :status', { status: DefaultStatus.ACTIVE });
-        }
+        } 
 
  const [result, total] = await query
       .orderBy('subject.name', 'ASC')
@@ -177,6 +175,11 @@ async getSubjectsWithTutorCount() {
       tutorCount: Number(tutorCount?.tutorCount || 0)
     };
   });
+}
+
+async bulkUpdateStatus(dto: BulkSubjectStatusDto) {
+  await this.repo.update(dto.ids, { status: dto.status });
+  return { message: `${dto.ids.length} subjects status updated successfully` };
 }
 
 }

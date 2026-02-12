@@ -26,6 +26,8 @@ import { Menu } from 'src/menus/entities/menu.entity';
 import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
 import { NodeMailerService } from 'src/node-mailer/node-mailer.service';
 import { UpdateUserContactDto } from './dto/update-user-contact.dto';
+import { PdfUtils } from 'src/utils/pdf.utils';
+import { Response } from 'express';
 
 @Injectable()
 export class AccountService {
@@ -62,7 +64,7 @@ export class AccountService {
     const object = {
       name: dto.name,
       email: dto.email,
-      dob: dto.dob.toISOString().split('T')[0],
+      dob: typeof dto.dob === 'string' ? dto.dob : new Date(dto.dob).toISOString().split('T')[0],
       gender: dto.gender,
       city: dto.city,
       state: dto.state,
@@ -472,6 +474,16 @@ async userProfile(id: string) {
 
     const obj = { ...result, ...dto };
     return this.repo.save(obj);
+  }
+
+  async generateAllTutorsPdf(res: Response) {
+    const { result: tutors } = await this.getAllTutors({ limit: 1000, offset: 0 } as any);
+    PdfUtils.generateTutorsPdf(tutors, res);
+  }
+
+  async generateAllUsersPdf(res: Response) {
+    const { result: users } = await this.getAllUsers({ limit: 1000, offset: 0 } as any);
+    PdfUtils.generateUsersPdf(users, res);
   }
 
   private async sendStatusChangeEmail(email: string, role: UserRole, newStatus: DefaultStatus) {

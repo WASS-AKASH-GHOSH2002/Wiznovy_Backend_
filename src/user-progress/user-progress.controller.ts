@@ -1,6 +1,5 @@
 import { Controller, Post, Body, UseGuards, Get, Query } from '@nestjs/common';
 import { UserProgressService } from './user-progress.service';
-
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';

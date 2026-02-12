@@ -27,13 +27,13 @@ export class VideoLectureController {
   @Roles(UserRole.TUTOR)
   @UseInterceptors(
     FileFieldsInterceptor(
-      [{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }, { name: 'studyMaterial', maxCount: 1 }],
+      [{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }],
       VideoLectureController.createVideoLectureUploadConfig()
     )
   )
   create(
     @Body() dto: CreateVideoLectureDto,
-    @UploadedFiles() files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[]; studyMaterial?: Express.Multer.File[] },
+    @UploadedFiles() files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[] },
     @CurrentUser() user: Account,
   ) {
     return this.createVideoLecture(dto, files);
@@ -44,13 +44,13 @@ export class VideoLectureController {
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @UseInterceptors(
     FileFieldsInterceptor(
-      [{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }, { name: 'studyMaterial', maxCount: 1 }],
+      [{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }],
       VideoLectureController.createVideoLectureUploadConfig()
     )
   )
   admincreate(
     @Body() dto: CreateVideoLectureDto,
-    @UploadedFiles() files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[]; studyMaterial?: Express.Multer.File[] },
+    @UploadedFiles() files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[] },
     @CurrentUser() user: Account,
   ) {
     return this.createVideoLecture(dto, files);
@@ -58,11 +58,10 @@ export class VideoLectureController {
 
 
 
-  private createVideoLecture(dto: CreateVideoLectureDto, files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[]; studyMaterial?: Express.Multer.File[] }) {
+  private createVideoLecture(dto: CreateVideoLectureDto, files: { video?: Express.Multer.File[]; thumbnail?: Express.Multer.File[] }) {
     const video = files.video?.[0];
     const thumbnail = files.thumbnail?.[0];
-    const studyMaterial = files.studyMaterial?.[0];
-    return this.videoLectureService.create(dto, video, thumbnail, studyMaterial);
+    return this.videoLectureService.create(dto, video, thumbnail);
   }
 
 
@@ -187,7 +186,6 @@ export class VideoLectureController {
           let dest;
           if (file.fieldname === 'video') dest = './uploads/VideoLecture/videos';
           else if (file.fieldname === 'thumbnail') dest = './uploads/VideoLecture/thumbnails';
-          else if (file.fieldname === 'studyMaterial') dest = './uploads/StudyMaterial/pdfs';
           callback(null, dest);
         },
         filename: (req, file, callback) => {
@@ -197,11 +195,11 @@ export class VideoLectureController {
       }),
       limits: {
         fileSize: FileSizeLimit.VIDEO_SIZE,
-        files: 3,
+        files: 2,
         fields: 10,
         fieldNameSize: 100,
         fieldSize: 2097152,
-        parts: 15
+        parts: 12
       },
     };
   }

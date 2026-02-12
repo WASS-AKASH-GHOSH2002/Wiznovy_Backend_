@@ -39,4 +39,9 @@ export class RatingController {
     return this.ratingService.getSessionReviews(dto, account.id);
   }
 
+  @Get('global-count')
+  getGlobalRatingSummary() {
+    return this.ratingService.getGlobalRatingSummary();
+  }
+
 }

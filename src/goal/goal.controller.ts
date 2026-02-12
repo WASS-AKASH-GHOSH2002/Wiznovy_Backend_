@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Put } from '@nestjs/common';
 import { GoalService } from './goal.service';
-import { CreateGoalDto, GoalPaginationDto, GoalStatusDto } from './dto/create-goal.dto';
+import { CreateGoalDto, GoalPaginationDto, GoalStatusDto, BulkGoalStatusDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { AuthGuard } from '@nestjs/passport';
@@ -113,5 +113,18 @@ export class GoalController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   remove(@Param('id') id: string) {
     return this.goalService.remove(id);
+  }
+
+  @Put('bulk-status')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'goal'])
+  @ApiOperation({ summary: 'Bulk update goal status' })
+  @ApiBody({ type: BulkGoalStatusDto })
+  @ApiResponse({ status: 200, description: 'Goals status updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  bulkUpdateStatus(@Body() dto: BulkGoalStatusDto) {
+    return this.goalService.bulkUpdateStatus(dto);
   }
 }

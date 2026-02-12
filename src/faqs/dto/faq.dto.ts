@@ -10,7 +10,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { DefaultStatus } from 'src/enum';
+import { DefaultStatus, FaqType } from 'src/enum';
 
 export class FaqDto {
   @IsNotEmpty()
@@ -24,8 +24,8 @@ export class FaqDto {
   answer: string;
 
   @IsOptional()
-  @IsEnum(['USER', 'TUTOR'])
-  type: 'USER' | 'TUTOR';
+  @IsEnum(FaqType)
+  type: FaqType;
 }
 
 export class UpdateFaqDto {
@@ -38,8 +38,8 @@ export class UpdateFaqDto {
   answer: string;
 
   @IsOptional()
-  @IsEnum(['USER', 'TUTOR'])
-  type: 'USER' | 'TUTOR';
+  @IsEnum(FaqType)
+  type: FaqType;
 }
 
 export class FaqPaginationDto {
@@ -47,7 +47,7 @@ export class FaqPaginationDto {
   @Type(() => Number)
   @IsNumber()
   @Type(() => Number)
-  @Min(10)
+  @Min(5)
   @Max(100)
   limit: number;
 
@@ -64,11 +64,20 @@ export class FaqPaginationDto {
   @MaxLength(100)
   keyword: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(DefaultStatus)
   status: DefaultStatus;
 
   @IsOptional()
-  @IsEnum(['USER', 'TUTOR'])
-  type: 'USER' | 'TUTOR';
+  @IsEnum(FaqType)
+  type: FaqType;
+}
+export class BulkFaqStatusDto {
+  @IsNotEmpty()
+  @IsString({ each: true })
+  ids: string[];
+
+  @IsNotEmpty()
+  @IsEnum(DefaultStatus)
+  status: DefaultStatus;
 }

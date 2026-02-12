@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { CreateGoalDto, GoalPaginationDto, GoalStatusDto } from './dto/create-goal.dto';
+import { CreateGoalDto, GoalPaginationDto, GoalStatusDto, BulkGoalStatusDto } from './dto/create-goal.dto';
 import { UpdateGoalDto } from './dto/update-goal.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Brackets, Not } from 'typeorm';
@@ -28,7 +28,14 @@ export class GoalService {
   async findAll(dto: GoalPaginationDto) {
     const query = this.repo
       .createQueryBuilder('goal')
-      .select(['goal.id', 'goal.name', 'goal.status',]);
+      .select([
+        'goal.id', 
+        'goal.name',
+         'goal.status',
+         'goal.createdAt',
+         'goal.updatedAt'
+
+      ]);
 
     if (dto.keyword) {
       query.andWhere(
@@ -42,10 +49,7 @@ export class GoalService {
 
     if (dto.status) {
       query.andWhere('goal.status = :status', { status: dto.status });
-    } else {
-      query.andWhere('goal.status = :status', { status: DefaultStatus.ACTIVE });
-    }
-
+    } 
     const [result, total] = await query
       .orderBy('goal.name', 'ASC')
       .skip(dto.offset)
@@ -102,5 +106,10 @@ export class GoalService {
     const result = await this.findOne(id);
     await this.repo.remove(result);
     return { message: 'Goal deleted successfully' };
+  }
+
+  async bulkUpdateStatus(dto: BulkGoalStatusDto) {
+    await this.repo.update(dto.ids, { status: dto.status });
+    return { message: `${dto.ids.length} goals status updated successfully` };
   }
 }

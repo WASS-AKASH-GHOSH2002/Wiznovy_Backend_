@@ -5,10 +5,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { randomBytes } from 'node:crypto';
 import { extname } from 'node:path';
+import { imageFileFilter } from '../utils/fileUpload.utils';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { DefaultStatus, PermissionAction, UserRole, FileSizeLimit } from 'src/enum';
-import { BannerDto, BannerFilterDto, BannerPaginationDto } from './dto/create-banner.dto';
+import { BannerDto, BannerFilterDto, BannerPaginationDto, } from './dto/create-banner.dto';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import {
@@ -35,6 +36,7 @@ export class BannerController {
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
+      fileFilter: imageFileFilter,
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
         files: 1,
@@ -114,7 +116,7 @@ export class BannerController {
     return this.bannerService.findByUser(dto);
   }
 
-  @Put('update/:id')
+  @Put('image/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'banner'])
@@ -166,4 +168,21 @@ export class BannerController {
   status(@Param('id') id: string, @Body() dto: BannerDto) {
     return this.bannerService.status(id, dto);
   }
+
+  @Put('type/:id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'banner'])
+  @ApiOperation({ summary: 'Update banner type' })
+  @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
+  @ApiBody({ type: BannerDto })
+  @ApiResponse({ status: 200, description: 'Banner type updated successfully' })
+  @ApiResponse({ status: 404, description: 'Banner not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  type(@Param('id') id: string, @Body() dto: BannerDto) {
+    return this.bannerService.type(id, dto);
+  }
+
+
+
 }

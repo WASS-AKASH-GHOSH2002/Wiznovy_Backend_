@@ -16,6 +16,7 @@ import { NodeMailerModule } from 'src/node-mailer/node-mailer.module';
 import { LoginHistoryModule } from 'src/login-history/login-history.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
 import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
+import { Wallet } from 'src/wallet/entities/wallet.entity';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
       Account,
       UserPermission,
       UserDetail,
-      TutorDetail
+      TutorDetail,
+      Wallet
     ]),
     LoginHistoryModule,
     NodeMailerModule,

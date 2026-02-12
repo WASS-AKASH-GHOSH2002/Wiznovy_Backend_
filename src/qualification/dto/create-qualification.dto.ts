@@ -41,6 +41,18 @@ export class QualificationStatusDto {
   status: DefaultStatus;
 }
 
+export class BulkQualificationStatusDto {
+  @ApiProperty({ example: ['id1', 'id2', 'id3'] })
+  @IsNotEmpty()
+  @IsString({ each: true })
+  ids: string[];
+
+  @ApiProperty({ enum: DefaultStatus, example: DefaultStatus.ACTIVE })
+  @IsNotEmpty()
+  @IsEnum(DefaultStatus)
+  status: DefaultStatus;
+}
+
 export class QualificationPaginationDto {
   @ApiProperty({ example: 20, minimum: 10, maximum: 100 })
   @IsNotEmpty()

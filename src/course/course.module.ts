@@ -9,6 +9,7 @@ import { UserPurchase } from '../user-purchase/entities/user-purchase.entity';
 import { TutorDetail } from '../tutor-details/entities/tutor-detail.entity';
 import { AuthModule } from 'src/auth/auth.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
+import { AdminActionLogModule } from 'src/admin-action-log/admin-action-log.module';
 import { FileUploadErrorFilter } from '../utils/file-upload-error.filter';
 
 @Module({
@@ -21,6 +22,7 @@ import { FileUploadErrorFilter } from '../utils/file-upload-error.filter';
     ]),
     AuthModule,
     NotificationsModule,
+    AdminActionLogModule,
   ],
   controllers: [CourseController],
   providers: [

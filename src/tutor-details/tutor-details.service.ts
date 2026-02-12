@@ -4,6 +4,8 @@ import { Account } from 'src/account/entities/account.entity';
 import { Repository } from 'typeorm';
 import { UpdateTutorDetailDto } from './dto/update-tutor-details.dto';
 import { TutorDetail } from './entities/tutor-detail.entity';
+import { AdminActionLogService } from 'src/admin-action-log/admin-action-log.service';
+import { AdminActionType, AdminActionTargetType } from 'src/enum';
 import { unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -13,6 +15,7 @@ export class TutorDetailsService {
     @InjectRepository(TutorDetail) private readonly repo: Repository<TutorDetail>,
     @InjectRepository(Account)
     private readonly accountrepo: Repository<Account>,
+    private readonly adminActionLogService: AdminActionLogService,
   ) {}
 
   async findOne(id: string) {
@@ -23,13 +26,25 @@ export class TutorDetailsService {
     return result;
   }
 
-  async update(dto: UpdateTutorDetailDto, accountId: string) {
+  async update(dto: UpdateTutorDetailDto, accountId: string, ) {
     const result = await this.repo.findOne({ where: { accountId: accountId } });
     if (!result) {
       throw new NotFoundException('Tutor profile not found!');
     }
     const obj = Object.assign(result, dto);
-    return this.repo.save(obj);
+    const updated = await this.repo.save(obj);
+    
+    // if (adminId && adminId !== accountId) {
+    //   await this.adminActionLogService.log(
+    //     adminId,
+    //     AdminActionType.TUTOR_UPDATED,
+    //     accountId,
+    //     AdminActionTargetType.TUTOR,
+    //     `Tutor profile updated for ${result.name || accountId}`
+    //   );
+    // }
+    
+    return updated;
   }
 
   async profileImage(image: string, result: TutorDetail) {

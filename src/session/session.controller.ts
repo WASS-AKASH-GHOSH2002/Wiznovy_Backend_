@@ -1,15 +1,18 @@
-import { Controller, Post, Get, Body, Query, Param, UseGuards, Patch } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, Param, UseGuards, Patch, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SessionService } from './session.service';
 import { CreateSessionDto, SessionPaginationDto } from './dto/create-session.dto';
 import { CancelSessionDto } from './dto/cancel-session.dto';
+import { AdminCancelSessionDto } from './dto/admin-cancel-session.dto';
 import { RescheduleSessionDto } from './dto/reschedule-session.dto';
+import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Account } from '../account/entities/account.entity';
 import { UserRole } from '../enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
+import { Request } from 'express';
 
 @ApiTags('Sessions')
 @Controller('sessions')
@@ -22,6 +25,17 @@ export class SessionController {
   @Roles(UserRole.USER)
   bookSession(@Body() dto: CreateSessionDto, @CurrentUser() user: Account) {
     return this.sessionService.create(dto, user.id);
+  }
+
+  @Post('confirm-payment')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.USER)
+  @ApiOperation({ summary: 'Confirm payment and finalize session booking' })
+  @ApiResponse({ status: 200, description: 'Payment confirmed and session booked' })
+  @ApiResponse({ status: 400, description: 'Session not found or invalid status' })
+  @ApiResponse({ status: 409, description: 'Session lock expired' })
+  confirmPayment(@Body() dto: ConfirmPaymentDto, @CurrentUser() user: Account) {
+    return this.sessionService.confirmPayment(dto.sessionId, user.id, dto);
   }
 
   @Get('my-sessions')
@@ -38,8 +52,17 @@ export class SessionController {
     return this.sessionService.findTutorSessions(user.id, dto);
   }
 
-  
+  @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.USER, UserRole.TUTOR)
+  @ApiOperation({ summary: 'Get session by ID' })
+  @ApiResponse({ status: 200, description: 'Session found' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  findSessionById(@Param('id') id: string, @CurrentUser() user: Account) {
+    return this.sessionService.findSessionById(id, user.id);
+  }
 
+  
   @Get('payment-history')
   @UseGuards(RolesGuard)
   @Roles(UserRole.USER)
@@ -121,5 +144,47 @@ export class SessionController {
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   sendSessionReminders() {
     return this.sessionService.sendSessionReminders();
+  }
+
+  @Get('admin/all')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Admin: View all sessions with filters' })
+  findAllSessions(@Query() dto: SessionPaginationDto) {
+    return this.sessionService.findAllSessions(dto);
+  }
+
+  @Get('admin/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Admin: Get session details by ID' })
+  adminFindOne(@Param('id') id: string) {
+    return this.sessionService.adminFindOne(id);
+  }
+
+  @Patch('admin/reschedule/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Admin: Reschedule any session' })
+  adminRescheduleSession(@Param('id') id: string, @Body() dto: RescheduleSessionDto) {
+    return this.sessionService.adminRescheduleSession(id, dto);
+  }
+
+  @Patch('admin/cancel/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Admin: Cancel any session' })
+  adminCancelSession(@Param('id') id: string, @Body() dto: AdminCancelSessionDto, @CurrentUser() admin: Account, @Req() req: Request) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    return this.sessionService.adminCancelSession(id, dto, admin.id, ipAddress, userAgent);
+  }
+
+  @Post('admin/create')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Admin: Manually create session for testing' })
+  adminCreateSession(@Body() dto: CreateSessionDto) {
+    return this.sessionService.adminCreateSession(dto);
   }
 }

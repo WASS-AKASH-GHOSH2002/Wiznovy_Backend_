@@ -13,6 +13,7 @@ import { Unit } from '../unit/entities/unit.entity';
 import { StudyMaterial } from '../study-material/entities/study-material.entity';
 import { VideoLecture } from '../video-lecture/entities/video-lecture.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { OrderNumberGenerator } from '../utils/order-number.util';
 
 interface PurchaseDto {
   purchaseType: PurchaseType;
@@ -76,6 +77,7 @@ export class UserPurchaseService {
       discountAmount: 0,
       paymentStatus: PaymentStatus.PENDING,
       transactionId: `TXN_${Date.now()}`,
+      orderNumber: OrderNumberGenerator.generateOrderNumber(),
       expiresAt: expiryDate,
     });
 
@@ -153,7 +155,7 @@ export class UserPurchaseService {
   }
 
   async checkExpiringSoon() {
-    // Implementation for checking expiring purchases
+
     return { message: 'Checked expiring purchases' };
   }
 

@@ -1,6 +1,6 @@
-import { IsNotEmpty, IsOptional, IsString, IsEnum, IsNumber, Min, Max } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsEnum, IsNumber, Min, Max, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
-import { DefaultStatus } from 'src/enum';
+import { BookStatus } from 'src/enum';
 
 export class CreateBookDto {
   @IsNotEmpty()
@@ -13,19 +13,37 @@ export class CreateBookDto {
 
   @IsOptional()
   @IsString()
-  description?: string;
+  description: string;
+
+  @IsOptional()
+  @IsUUID()
+  subjectId: string;
+
+  @IsOptional()
+  @IsUUID()
+  languageId: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  totalPages: number;
 
   @IsOptional()
   @IsString()
-  image?: string;
+  image: string;
 
   @IsOptional()
   @IsString()
-  imagePath?: string;
+  imagePath: string;
 
   @IsOptional()
-  @IsEnum(DefaultStatus)
-  status?: DefaultStatus;
+  @IsEnum(BookStatus)
+  status: BookStatus;
+
+  @IsOptional()
+  @IsUUID()
+  createdBy: string;
 }
 
 export class BookPaginationDto {
@@ -34,25 +52,48 @@ export class BookPaginationDto {
   @IsNumber()
   @Min(5)
   @Max(100)
-  limit?: number = 10;
+  limit: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  offset?: number = 0;
+  offset?: number;
 
   @IsOptional()
   @IsString()
   keyword?: string;
 
   @IsOptional()
-  @IsEnum(DefaultStatus)
-  status?: DefaultStatus;
+  @IsEnum(BookStatus)
+  status: BookStatus;
+
+  @IsOptional()
+  @IsUUID()
+  languageId: string;
+
+  @IsOptional()
+  @IsUUID()
+  subjectId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  tutorId?: string;
 }
 
 export class UpdateStatusDto {
   @IsNotEmpty()
-  @IsEnum(DefaultStatus)
-  status: DefaultStatus;
+  @IsEnum(BookStatus)
+  status: BookStatus;
 }
+
+export class BulkBookStatusDto {
+  @IsNotEmpty()
+  @IsString({ each: true })
+  ids: string[];
+
+  @IsNotEmpty()
+  @IsEnum(BookStatus)
+  status: BookStatus;
+}
+

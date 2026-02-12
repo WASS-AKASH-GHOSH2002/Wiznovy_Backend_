@@ -27,6 +27,11 @@ export class CountryController {
       }),
       limits: {
         fileSize: FileSizeLimit.IMAGE_SIZE,
+        files: 1,
+        fields: 10,
+        fieldNameSize: 100,
+        fieldSize: 2097152,
+        parts: 12
       },
     };
   }

@@ -17,8 +17,6 @@ export class Topic {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ type: 'text', nullable: true })
-  description: string;
 
   @Column({ type: 'enum', enum: DefaultStatus, default: DefaultStatus.ACTIVE })
   status: DefaultStatus;

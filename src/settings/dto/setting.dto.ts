@@ -1,43 +1,87 @@
 import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   IsUrl,
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { DefaultStatus } from 'src/enum';
 
 export class SettingDto {
-  @IsOptional()
-  @IsUrl()
-  user_domain: string;
-
-  @IsOptional()
-  @IsUrl()
-  admin_domain: string;
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(50)
+  title: string;
 
   @IsOptional()
   @IsString()
-  @MinLength(0)
-  @MaxLength(150)
-  mobile_domain: string;
+  domain: string;
+    @IsOptional()
+  @IsString()
+  email: string;
 
   @IsOptional()
   @IsString()
-  facebook: string;
+  logo: string;
 
   @IsOptional()
   @IsString()
-  linkedIn: string;
+  logoPath: string;
 
   @IsOptional()
   @IsString()
-  twitter: string;
+  wpLink: string;
 
   @IsOptional()
   @IsString()
-  instagram: string;
+  fbLink: string;
 
   @IsOptional()
   @IsString()
-  whatsApp: string;
+  instaLink: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  companyName: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  companyAddress: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  companyCity: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  companyPhone: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  companyGstin: string;
+
+  @IsOptional()
+  @IsNumber()
+  pdfMargin: number;
+
+  @IsOptional()
+  @IsString()
+  invoiceDeclaration: string;
+  
+  @IsOptional()
+  @IsNumber()
+  gstPercentage: number;
+
+  @IsOptional()
+  @IsEnum(DefaultStatus)
+  status: DefaultStatus;
 }

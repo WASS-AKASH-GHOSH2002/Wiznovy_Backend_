@@ -75,10 +75,7 @@ export class UserProgressService {
     switch (purchaseType) {
       case PurchaseType.COURSE:
         return this.createCourseProgressRecords(userId, itemId);
-      case PurchaseType.UNIT:
-        return this.createUnitProgressRecords(userId, itemId);
-      case PurchaseType.STUDY_MATERIAL:
-        return this.createStudyMaterialProgressRecords(userId, itemId);
+   
       default:
         return [];
     }

@@ -4,6 +4,8 @@ import { Account } from 'src/account/entities/account.entity';
 import { Repository } from 'typeorm';
 import { UpdateUserDetailDto } from './dto/update-user-details.dto';
 import { UserDetail } from './entities/user-detail.entity';
+import { AdminActionLogService } from 'src/admin-action-log/admin-action-log.service';
+import { AdminActionType, AdminActionTargetType } from 'src/enum';
 import { unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -13,6 +15,7 @@ export class UserDetailsService {
     @InjectRepository(UserDetail) private readonly repo: Repository<UserDetail>,
     @InjectRepository(Account)
     private readonly accountrepo: Repository<Account>,
+    private readonly adminActionLogService: AdminActionLogService,
   ) {}
 
   async findOne(id: string) {
@@ -23,13 +26,25 @@ export class UserDetailsService {
     return result;
   }
 
-  async update(dto: UpdateUserDetailDto, accountId: string) {
+  async update(dto: UpdateUserDetailDto, accountId: string, adminId?: string) {
     const result = await this.repo.findOne({ where: { accountId: accountId } });
     if (!result) {
       throw new NotFoundException('User profile not found!');
     }
     const obj = Object.assign(result, dto);
-    return this.repo.save(obj);
+    const updated = await this.repo.save(obj);
+    
+    if (adminId && adminId !== accountId) {
+      await this.adminActionLogService.log(
+        adminId,
+        AdminActionType.USER_UPDATED,
+        accountId,
+        AdminActionTargetType.USER,
+        `User profile updated for ${result.name || accountId}`
+      );
+    }
+    
+    return updated;
   }
 
   async profileImage(image: string, result: UserDetail) {

@@ -1,8 +1,13 @@
 import { IsNotEmpty, IsString, IsUUID, IsOptional, IsDateString, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { SessionType, SessionDurationType } from '../../enum';
+import { SessionType, SessionDurationType, SessionStatus } from '../../enum';
 
 export class CreateSessionDto {
+  @ApiPropertyOptional({ description: 'User ID (required for admin manual creation)' })
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
+
   @ApiProperty()
   @IsNotEmpty()
   @IsUUID()
@@ -38,13 +43,16 @@ export class CreateSessionDto {
   @IsEnum(SessionDurationType)
   trialDuration?: SessionDurationType;
 
-
+  @ApiPropertyOptional({ description: 'Payment method: COD or ONLINE', example: 'ONLINE' })
+  @IsOptional()
+  @IsString()
+  paymentMethod: string;
 }
 
 export class SessionPaginationDto {
   @ApiPropertyOptional({ example: 20 })
   @IsOptional()
-  limit: number = 20;
+  limit: number;
 
   @ApiPropertyOptional({ example: 0 })
   @IsOptional()
@@ -65,8 +73,22 @@ export class SessionPaginationDto {
   @IsDateString()
   toDate?: string;
 
-  @ApiPropertyOptional({ example: 'SCHEDULED' })
-  @IsOptional()
-  @IsString()
-  status?: string;
+ @ApiPropertyOptional({
+  enum: SessionStatus,
+  example: SessionStatus.SCHEDULED,
+})
+@IsOptional()
+@IsEnum(SessionStatus)
+status: SessionStatus;
+
+
+@ApiPropertyOptional({
+  enum: SessionType,
+  example: SessionType.REGULAR,
+})
+@IsOptional()
+@IsEnum(SessionType)
+sessionType: SessionType;
+
+ 
 }

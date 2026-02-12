@@ -1,7 +1,5 @@
 import { Account } from 'src/account/entities/account.entity';
 import { Course } from 'src/course/entities/course.entity';
-import { Unit } from 'src/unit/entities/unit.entity';
-import { StudyMaterial } from 'src/study-material/entities/study-material.entity';
 import { Session } from 'src/session/entities/session.entity';
 import { PaymentStatus, PurchaseType, DefaultStatus } from 'src/enum';
 import {
@@ -29,20 +27,13 @@ export class UserPurchase {
   courseId: string;
 
   @Column({ type: 'uuid', nullable: true })
-  videoLectureId: string;
-
-  @Column({ type: 'uuid', nullable: true })
-  studyMaterialId: string;
-
-
-  @Column({ type: 'uuid', nullable: true })
-  unitId: string;
-
-  @Column({ type: 'uuid', nullable: true })
   sessionId: string;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   merchantOrderId: string;
+
+  @Column({ type: 'varchar', length: 50, unique: true, nullable: true })
+  orderNumber: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   amount: number;
@@ -91,13 +82,6 @@ export class UserPurchase {
 
   @ManyToOne(() => Course, { nullable: true })
   course: Course;
-
-
-  @ManyToOne(() => StudyMaterial, { nullable: true })
-  studyMaterial: StudyMaterial;
-
-  @ManyToOne(() => Unit, { nullable: true })
-  unit: Unit;
 
   @ManyToOne(() => Session, { nullable: true })
   session: Session;

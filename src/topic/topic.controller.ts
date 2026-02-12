@@ -16,6 +16,7 @@ import {
   UpdateTopicDto,
   TopicStatusDto,
   TopicPaginationDto,
+  BulkTopicStatusDto,
 } from './dto/create-topic.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -128,5 +129,18 @@ export class TopicController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   remove(@Param('id') id: string) {
     return this.topicService.remove(id);
+  }
+
+  @Put('bulk-status')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'topic'])
+  @ApiOperation({ summary: 'Bulk update topic status' })
+  @ApiBody({ type: BulkTopicStatusDto })
+  @ApiResponse({ status: 200, description: 'Topics status updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  bulkUpdateStatus(@Body() dto: BulkTopicStatusDto) {
+    return this.topicService.bulkUpdateStatus(dto);
   }
 }

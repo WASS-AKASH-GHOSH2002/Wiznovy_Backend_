@@ -1,12 +1,15 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from 'src/auth/auth.module';
-import { Setting } from './entities/setting.entity';
-import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
+import { SettingsController } from './settings.controller';
+import { Setting } from './entities/setting.entity';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Setting]), AuthModule],
+  imports: [
+    TypeOrmModule.forFeature([Setting]),
+    forwardRef(() => AuthModule),
+  ],
   controllers: [SettingsController],
   providers: [SettingsService],
   exports: [SettingsService],
