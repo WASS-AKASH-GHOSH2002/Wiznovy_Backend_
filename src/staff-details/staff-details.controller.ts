@@ -16,6 +16,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { PermissionAction, UserRole } from 'src/enum';
 import { UpdateStaffDetailDto } from './dto/staff-detail.dto';
 import { StaffDetailsService } from './staff-details.service';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @Controller('staff-details')
 export class StaffDetailsController {
@@ -28,6 +29,14 @@ export class StaffDetailsController {
     return this.staffDetailsService.profile(user.id);
   }
 
+  @Get('staff/:accountId')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(...Object.values(UserRole))
+  @CheckPermissions([PermissionAction.READ, 'staff_detail'])
+  findByAccount(@Param('accountId') accountId: string) {
+    return this.staffDetailsService.findByAccount(accountId);
+  }
+
   @Get(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(...Object.values(UserRole))
@@ -36,10 +45,23 @@ export class StaffDetailsController {
     return this.staffDetailsService.profile(id);
   }
 
-  @Patch('profile/:id')
+  @Patch('staffUpdate/:accountId')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'staff_detail'])
+  updateByAdmin(
+    @Param('accountId') accountId: string,
+    @CurrentUser() user: Account,
+    @Body() dto: UpdateStaffDetailDto,
+  ) {
+    return this.staffDetailsService.updateByAdmin(accountId, dto, user.id);
+  }
+
+  @Patch('profile/:id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, )
   @Roles(...Object.values(UserRole))
-  @CheckPermissions([PermissionAction.READ, 'staff_detail'])
+  //@CheckPermissions([PermissionAction.UPDATE, 'staff_detail'])
   updateProfileById(
     @Param('id') id: string,
     @CurrentUser() user: Account,

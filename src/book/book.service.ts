@@ -10,6 +10,7 @@ import { CreateBookDto, BookPaginationDto, UpdateStatusDto, BulkBookStatusDto } 
 import { UpdateBookDto } from './dto/update-book.dto';
 import { join } from 'node:path';
 import { unlinkSync } from 'node:fs';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class BookService {
@@ -24,6 +25,7 @@ export class BookService {
     private readonly languageRepo: Repository<Language>,
     @InjectRepository(SavedBook)
     private readonly savedBookRepo: Repository<SavedBook>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(dto: CreateBookDto) {
@@ -51,7 +53,9 @@ export class BookService {
 
     const isbn = await this.generateIsbn();
     const book = this.bookRepo.create({ ...dto, createdBy: tutorId, isbn });
-    return await this.bookRepo.save(book);
+    const saved = await this.bookRepo.save(book);
+    await this.notificationsService.notifyBookSubmittedForReview(tutorId, saved.name);
+    return saved;
   }
 
   async findAll(dto: BookPaginationDto) {

@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Account } from 'src/account/entities/account.entity';
 import { BankDetail } from 'src/bank-details/entities/bank-detail.entity';
-import { PaymentMethod, PayoutStatus } from 'src/enum';
+import { ApprovePaymentMethod, PayoutStatus } from 'src/enum';
 @Entity()
 export class TutorPayout {
   @PrimaryGeneratedColumn('uuid')
@@ -13,8 +13,8 @@ export class TutorPayout {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   amount: number;
 
-  @Column({ type: 'enum', enum: PaymentMethod })
-  paymentMethod: PaymentMethod;
+  @Column({ type: 'enum', enum: ApprovePaymentMethod, nullable: true })
+  paymentMethod: ApprovePaymentMethod;
 
    @Column({ type: 'varchar', length: 100, nullable: true })
   transactionId: string;

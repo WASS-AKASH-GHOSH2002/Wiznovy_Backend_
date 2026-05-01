@@ -12,6 +12,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { Account } from 'src/account/entities/account.entity';
 import { FileUploadUtil } from 'src/utils/file-upload.util';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @Controller('books')
 export class BookController {
@@ -28,20 +29,22 @@ export class BookController {
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+   @AdminProtected()
   @CheckPermissions([PermissionAction.CREATE, 'book'])
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async create(@Body() createBookDto: CreateBookDto) {
     return await this.bookService.create(createBookDto);
   }
 
-  @Post()
-  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.CREATE, 'book'])
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-  async savedBook(@Body() createBookDto: CreateBookDto) {
-    return await this.bookService.create(createBookDto);
-  }
+  // @Post()
+  // @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  // @Roles(UserRole.ADMIN, UserRole.STAFF)
+  // @AdminProtected()
+  // @CheckPermissions([PermissionAction.CREATE, 'book'])
+  // @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  // async savedBook(@Body() createBookDto: CreateBookDto) {
+  //   return await this.bookService.create(createBookDto);
+  // }
   @Patch('tutor/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.TUTOR)
@@ -143,6 +146,7 @@ export class BookController {
   @Put('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+   @AdminProtected()
   @CheckPermissions([PermissionAction.UPDATE, 'book'])
   updateStatus(@Param('id') id: string, @Body() dto: UpdateStatusDto) {
     return this.bookService.updateStatus(id, dto);
@@ -151,6 +155,7 @@ export class BookController {
   @Put('cover-image/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @AdminProtected()
   @CheckPermissions([PermissionAction.UPDATE, 'book'])
   @UseInterceptors(FileInterceptor('file', FileUploadUtil.createUploadConfig('./uploads/Books', FileSizeLimit.IMAGE_SIZE)))
   async coverImage(
@@ -163,6 +168,7 @@ export class BookController {
   @Put('pdf/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @AdminProtected()
   @CheckPermissions([PermissionAction.UPDATE, 'book'])
   @UseInterceptors(FileInterceptor('file', FileUploadUtil.createUploadConfig('./uploads/Books/pdfs', FileSizeLimit.DOCUMENT_SIZE)))
   async pdfFile(
@@ -175,6 +181,7 @@ export class BookController {
   @Post('add/images/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+    @AdminProtected() 
   @CheckPermissions([PermissionAction.CREATE, 'book'])
   @UseInterceptors(FilesInterceptor('files', 10, FileUploadUtil.createUploadConfig('./uploads/Books', FileSizeLimit.IMAGE_SIZE)))
   async addImages(
@@ -187,6 +194,7 @@ export class BookController {
   @Put('images/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @AdminProtected()
   @CheckPermissions([PermissionAction.UPDATE, 'book'])
   @UseInterceptors(FilesInterceptor('files', 3, FileUploadUtil.createUploadConfig('./uploads/Books', FileSizeLimit.IMAGE_SIZE)))
   async replaceImages(
@@ -199,6 +207,7 @@ export class BookController {
   @Put('bulk-status')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @AdminProtected()
   @CheckPermissions([PermissionAction.UPDATE, 'book'])
   bulkUpdateStatus(@Body() dto: BulkBookStatusDto) {
     return this.bookService.bulkUpdateStatus(dto);

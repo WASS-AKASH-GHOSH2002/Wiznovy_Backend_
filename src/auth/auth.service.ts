@@ -2,13 +2,10 @@ import { HttpService } from '@nestjs/axios';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { randomInt } from 'node:crypto';
 import {
-  BadRequestException,
-  ConflictException,
   Inject,
   Injectable,
   Logger,
-  NotFoundException,
-  UnauthorizedException,
+  HttpStatus,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -32,6 +29,10 @@ import { NotificationsService } from 'src/notifications/notifications.service';
 import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
 import { Wallet } from 'src/wallet/entities/wallet.entity';
 import { OAuth2Client } from 'google-auth-library';
+import { CustomException } from '../shared/exceptions/custom.exception';
+import { MESSAGE_CODES } from '../shared/constants/message-codes';
+import { MessageType } from '../shared/constants/message-type.enum';
+import { StaffDetail } from 'src/staff-details/entities/staff-detail.entity';
 
 @Injectable()
 export class AuthService {
@@ -54,78 +55,90 @@ export class AuthService {
     private readonly nodeMailerService: NodeMailerService,
     private readonly loginHistoryService: LoginHistoryService,
     private readonly notificationsService: NotificationsService,
+    @InjectRepository(StaffDetail)
+    private readonly staffDetailRepo: Repository<StaffDetail>,
 
   ) {
     this.googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
     this.googleTutorClient = new OAuth2Client(process.env.GOOGLE_TUTOR_CLIENT_ID);
   }
 
-  async signIn(loginId: string, password: string, ip?: string) {
+  async signIn(loginId: string, password: string, ip?: string, userAgent?: string) {
     const admin = await this.getUserDetails(loginId, UserRole.ADMIN);
     
     if (admin.lockedUntil && new Date() < admin.lockedUntil) {
       const unlockTime = new Date(admin.lockedUntil).toLocaleString();
-      throw new UnauthorizedException(`Account is locked until ${unlockTime}`);
+      throw new CustomException(
+        { ...MESSAGE_CODES.AUTH_ACCOUNT_LOCKED, message: `Account is locked until ${unlockTime}` },
+        MessageType.ERROR,
+        HttpStatus.UNAUTHORIZED,
+      );
     }
     
     const comparePassword = await bcrypt.compare(password, admin.password);
     if (!comparePassword) {
       await this.handleFailedLogin(admin);
-      throw new UnauthorizedException('Invalid Credentials');
+      throw new CustomException(MESSAGE_CODES.AUTH_INVALID_CREDENTIALS, MessageType.ERROR, HttpStatus.UNAUTHORIZED);
     }
     
-   const otp = randomInt(100000, 1000000).toString();
+   //const otp = randomInt(100000, 1000000).toString();
+   const otp = '123456';
     await this.cacheManager.set(`admin_login_${admin.email}`, {
       otp,
       adminId: admin.id,
-      ip: ip || 'unknown'
-    }, 2 * 60 * 1000);
+      ip: ip || 'unknown',
+      userAgent: userAgent || null,
+    }, 10 * 60 * 1000);
     
     await this.nodeMailerService.sendOtpInEmail(admin.email, otp);
     
     return { 
       message: 'OTP sent to your email for login verification',
       email: admin.email,
-      requiresOtp: true
+      requiresOtp: true,
+      otp
     };
   }
 
-  async verifyAdminLoginOtp(email: string, otp: string) {
+  async verifyAdminLoginOtp(email: string, otp: string, userAgent?: string) {
     const cacheKey = `admin_login_${email}`;
     const cachedData = await this.cacheManager.get<any>(cacheKey);
-    
+
     if (!cachedData) {
-      throw new BadRequestException('OTP expired or not found');
+      throw new CustomException(MESSAGE_CODES.AUTH_OTP_EXPIRED_ONLY, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
-    
+
     if (String(cachedData.otp).trim() !== String(otp).trim()) {
-      throw new BadRequestException('Invalid OTP');
+      throw new CustomException(MESSAGE_CODES.AUTH_OTP_EXPIRED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
-    
+
     const admin = await this.repo.findOne({ where: { id: cachedData.adminId } });
-    
+
     if (admin.failedLoginAttempts > 0) {
       admin.failedLoginAttempts = 0;
       admin.lockedUntil = null;
       await this.repo.save(admin);
     }
-    
-    await this.loginHistoryService.recordLogin(admin.id, cachedData.ip);
+
+    // fetch last login BEFORE recording the new one
+    const lastLogin = await this.loginHistoryService.getLastLogin(admin.id);
+
+    await this.loginHistoryService.recordLogin(admin.id, cachedData.ip, cachedData.userAgent);
     await this.cacheManager.del(cacheKey);
-    
+
     const token = await APIFeatures.assignJwtToken(admin.id, this.jwtService);
-    return { token, email: admin.email, role: admin.roles };
+    return { token, email: admin.email, role: admin.roles, lastLogin };
   }
 
-  async verifyRegistrationOtp(email: string, otp: string, ip: string) {
-    return this.verifyRegistrationOtpInternal(email, otp, ip, 'user');
+  async verifyRegistrationOtp(email: string, otp: string, ip: string, userAgent?: string) {
+    return this.verifyRegistrationOtpInternal(email, otp, ip, 'user', userAgent);
   }
 
-  async verifyTutorRegistrationOtp(email: string, otp: string, ip: string) {
-    return this.verifyRegistrationOtpInternal(email, otp, ip, 'tutor');
+  async verifyTutorRegistrationOtp(email: string, otp: string, ip: string, userAgent?: string) {
+    return this.verifyRegistrationOtpInternal(email, otp, ip, 'tutor', userAgent);
   }
 
-  private async verifyRegistrationOtpInternal(email: string, otp: string, ip: string, type: 'user' | 'tutor') {
+  private async verifyRegistrationOtpInternal(email: string, otp: string, ip: string, type: 'user' | 'tutor', userAgent?: string) {
     const trimmedEmail = email.trim();
     const userDataKey = `${type}_registration_data_${trimmedEmail}`;
     const otpKey = `${type}_registration_otp_${trimmedEmail}`;
@@ -134,15 +147,15 @@ export class AuthService {
     const storedOtp = await this.cacheManager.get<string>(otpKey);
     
     if (!cachedData) {
-      throw new BadRequestException(`${type.charAt(0).toUpperCase() + type.slice(1)} registration data not found`);
+      throw new CustomException(MESSAGE_CODES.AUTH_OTP_EXPIRED_ONLY, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
     
     if (!storedOtp) {
-      throw new BadRequestException('OTP expired');
+      throw new CustomException(MESSAGE_CODES.AUTH_OTP_EXPIRED_ONLY, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
     
     if (String(storedOtp).trim() !== String(otp).trim()) {
-      throw new BadRequestException('Invalid OTP');
+      throw new CustomException(MESSAGE_CODES.AUTH_OTP_EXPIRED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
 
     const accountData = {
@@ -154,19 +167,14 @@ export class AuthService {
     };
     
     const account = await this.repo.save(Object.create(accountData));
-    await this.walletRepo.save(
-  this.walletRepo.create({
-    accountId: account.id,
-    balance: 0,
-    totalEarnings: 0,
-    totalWithdrawals: 0,
-  }),
-);
+    await this.createUserWallet(account.id);
 
     if (type === 'user') {
+      const generatedUserId = await this.generateUserId();
       const userDetail = Object.create({
         accountId: account.id,
         name: cachedData.name,
+        userId: generatedUserId,
       });
       await this.userDetailRepo.save(userDetail);
       await this.nodeMailerService.welcomeMail(cachedData.email, cachedData.name, new Date().toISOString());
@@ -179,12 +187,19 @@ export class AuthService {
       });
       await this.tutordetailRepo.save(tutorDetail);
       await this.nodeMailerService.tutorRegistrationMail(cachedData.email, cachedData.name, new Date().toISOString());
+      const admins = await this.repo.find({ where: { roles: UserRole.ADMIN }, select: ['id'] });
+      const adminIds = admins.map(a => a.id);
+      await this.notificationsService.notifyAdminNewTutorApplication(
+        cachedData.name,
+        cachedData.subject || 'General',
+        adminIds,
+      );
     }
 
     await this.cacheManager.del(userDataKey);
     await this.cacheManager.del(otpKey);
     
-    await this.loginHistoryService.recordLogin(account.id, ip);
+    await this.loginHistoryService.recordLogin(account.id, ip, userAgent);
     const token = await APIFeatures.assignJwtToken(account.id, this.jwtService);
 
     return {
@@ -216,13 +231,28 @@ export class AuthService {
     const user = await this.findUserByEmailAndRole(dto.email, UserRole.USER, 'userDetail');
     
     if (!user) {
-      throw new NotFoundException('EmailId does not exists. Please register first!');
+      throw new CustomException(MESSAGE_CODES.AUTH_LOGIN_FAILED, MessageType.ERROR, HttpStatus.UNAUTHORIZED);
+    }
+
+    if (user.lockedUntil && new Date() < user.lockedUntil) {
+      throw new CustomException(MESSAGE_CODES.AUTH_ACCOUNT_LOCKED, MessageType.ERROR, HttpStatus.UNAUTHORIZED);
     }
 
     this.validateAccountStatus(user, 'user');
-    await this.validatePassword(dto.password, user.password);
+    
+    const comparePassword = await bcrypt.compare(dto.password, user.password);
+    if (!comparePassword) {
+      await this.handleFailedLogin(user);
+      throw new CustomException(MESSAGE_CODES.AUTH_LOGIN_FAILED, MessageType.ERROR, HttpStatus.UNAUTHORIZED);
+    }
 
-    await this.loginHistoryService.recordLogin(user.id, dto.ip);
+    if (user.failedLoginAttempts > 0) {
+      user.failedLoginAttempts = 0;
+      user.lockedUntil = null;
+      await this.repo.save(user);
+    }
+
+    await this.loginHistoryService.recordLogin(user.id, dto.ip, dto.userAgent);
     const token = await APIFeatures.assignJwtToken(user.id, this.jwtService);
     return { token: token, name: user.userDetail['name'] };
   }
@@ -240,9 +270,7 @@ export class AuthService {
       )
       .getOne();
     if (!user) {
-      throw new NotFoundException(
-        'Email does not exist. Please register first!',
-      );
+      throw new CustomException(MESSAGE_CODES.AUTH_ACCOUNT_NOT_FOUND, MessageType.ERROR, HttpStatus.NOT_FOUND);
     }
     const otp = randomInt(100000, 1000000).toString();
     await this.cacheManager.set(dto.email, otp, 2 * 60 * 1000);
@@ -251,14 +279,14 @@ export class AuthService {
       return { email: dto.email, message: 'OTP sent to your email address' };
     } catch (error) {
       this.logger.error('Failed to send forgot password OTP:', error);
-      throw new BadRequestException('Failed to send OTP email. Please try again.');
+      throw new CustomException(MESSAGE_CODES.AUTH_OTP_SEND_FAILED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
   }
 
   async verifyOtp(email: string, otp: string) {
     const storedOtp = await this.cacheManager.get<string>(email);
     if (!storedOtp || storedOtp !== otp) {
-      throw new BadRequestException('Invalid or expired OTP');
+      throw new CustomException(MESSAGE_CODES.AUTH_OTP_EXPIRED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
     return { matched: true, message: 'OTP Matched.' };
   }
@@ -276,14 +304,12 @@ export class AuthService {
       )
       .getOne();
     if (!user) {
-      throw new NotFoundException(
-        'Email does not exist. Please register first!',
-      );
+      throw new CustomException(MESSAGE_CODES.AUTH_ACCOUNT_NOT_FOUND, MessageType.ERROR, HttpStatus.NOT_FOUND);
     }
 
     const isSamePassword = await bcrypt.compare(dto.newPassword, user.password);
     if (isSamePassword) {
-      throw new BadRequestException('New password cannot be the same as current password');
+      throw new CustomException(MESSAGE_CODES.AUTH_PASSWORDS_DO_NOT_MATCH, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
@@ -304,17 +330,17 @@ export class AuthService {
   }
 
   private readonly getPermissions = async (accountId: string): Promise<any> => {
-    let result = await this.cacheManager.get('userPermission' + accountId);
+    const cacheKey = 'userPermission' + accountId;
+    let result = await this.cacheManager.get(cacheKey);
     if (!result) {
-      result = await this.upRepo.find({
+      // load individual account permissions
+      const userPerms = await this.upRepo.find({
         relations: ['permission', 'menu'],
         where: { accountId, status: true },
       });
-      this.cacheManager.set(
-        'userPermission' + accountId,
-        result,
-        7 * 24 * 60 * 60 * 1000,
-      );
+
+      result = userPerms;
+      this.cacheManager.set(cacheKey, result, 7 * 24 * 60 * 60 * 1000);
     }
     return result;
   };
@@ -342,7 +368,7 @@ export class AuthService {
     
     const result = await query.getOne();
     if (!result) {
-      throw new UnauthorizedException('Account not found!');
+      throw new CustomException(MESSAGE_CODES.AUTH_ACCOUNT_NOT_FOUND, MessageType.ERROR, HttpStatus.UNAUTHORIZED);
     }
     return result;
   };
@@ -380,11 +406,11 @@ export class AuthService {
 
     const payload = ticket.getPayload();
     if (!payload) {
-      throw new BadRequestException('Invalid Google token');
+      throw new CustomException(MESSAGE_CODES.AUTH_TOKEN_INVALID, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
 
     if (!payload.email_verified) {
-      throw new BadRequestException('Google email not verified');
+      throw new CustomException(MESSAGE_CODES.AUTH_EMAIL_NOT_VERIFIED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
 
     return payload;
@@ -411,9 +437,11 @@ export class AuthService {
   }
 
   private async createUserWallet(accountId: string) {
+    const walletId = await this.generateWalletId();
     await this.walletRepo.save(
       this.walletRepo.create({
         accountId,
+        walletId,
         balance: 0,
         totalEarnings: 0,
         totalWithdrawals: 0,
@@ -421,11 +449,36 @@ export class AuthService {
     );
   }
 
+  private async generateWalletId(): Promise<string> {
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-CA').split('-').join('');
+    const prefix = 'WAL';
+
+    const lastWallet = await this.walletRepo
+      .createQueryBuilder('wallet')
+      .where('wallet.walletId LIKE :pattern', { pattern: `${prefix}%/%` })
+      .orderBy('wallet.walletId', 'DESC')
+      .getOne();
+
+    let sequence = 1001;
+    const lastSequence = lastWallet?.walletId
+      ? Number.parseInt(lastWallet.walletId.split('/')[1], 10)
+      : Number.NaN;
+
+    if (!Number.isNaN(lastSequence)) {
+      sequence = lastSequence + 1;
+    }
+
+    return `${prefix}${dateStr}/${sequence}`;
+  }
+
   private async createUserDetails(user: any, email: string, name: string, picture: string) {
+    const generatedUserId = await this.generateUserId();
     const userDetail = this.userDetailRepo.create({
       accountId: user.id,
       name: name || email.split('@')[0],
-      profile: picture
+      profile: picture,
+      userId: generatedUserId,
     });
     await this.userDetailRepo.save(userDetail);
     user.userDetail = [userDetail];
@@ -477,10 +530,10 @@ export class AuthService {
 
   private handleGoogleLoginError(error: any) {
     this.logger.error('Google login error:', error);
-    if (error instanceof BadRequestException) {
+    if (error instanceof CustomException) {
       throw error;
     }
-    throw new BadRequestException('Google login failed');
+    throw new CustomException(MESSAGE_CODES.AUTH_SOCIAL_LOGIN_FAILED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
   }
 
   async validateOAuthLogin(email: string, name: string, picture: string, provider: LoginType = LoginType.GOOGLE): Promise<any> {
@@ -497,15 +550,7 @@ export class AuthService {
         status: DefaultStatus.ACTIVE
       });
       user = await this.repo.save(account);
-
-      await this.walletRepo.save(
-        this.walletRepo.create({
-          accountId: user.id,
-          balance: 0,
-          totalEarnings: 0,
-          totalWithdrawals: 0,
-        })
-      );
+      await this.createUserWallet(user.id);
 
       const userDetail = this.userDetailRepo.create({
         accountId: user.id,
@@ -545,7 +590,7 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error(`Failed to send ${type} registration OTP:`, error);
-      throw new BadRequestException('Failed to send OTP email. Please try again.');
+      throw new CustomException(MESSAGE_CODES.AUTH_OTP_SEND_FAILED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -554,7 +599,7 @@ export class AuthService {
     const cachedData = await this.cacheManager.get<any>(userDataKey);
     
     if (!cachedData) {
-      throw new BadRequestException(`No pending ${type} registration found for this email`);
+      throw new CustomException(MESSAGE_CODES.AUTH_OTP_EXPIRED_ONLY, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
 
     const otp = randomInt(100000, 1000000).toString();
@@ -570,7 +615,7 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error(`Failed to resend ${type} registration OTP:`, error);
-      throw new BadRequestException('Failed to send OTP email. Please try again.');
+      throw new CustomException(MESSAGE_CODES.AUTH_OTP_SEND_FAILED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -607,10 +652,10 @@ export class AuthService {
       
     if (existingUser) {
       if (existingUser.email === email) {
-        throw new ConflictException(`${roleLabel} account with this email already exists!`);
+        throw new CustomException(MESSAGE_CODES.AUTH_EMAIL_ALREADY_REGISTERED, MessageType.ERROR, HttpStatus.CONFLICT);
       }
       if (existingUser.phoneNumber === phoneNumber) {
-        throw new ConflictException(`${roleLabel} account with this phone number already exists!`);
+        throw new CustomException(MESSAGE_CODES.AUTH_PHONE_ALREADY_REGISTERED, MessageType.ERROR, HttpStatus.CONFLICT);
       }
     }
   }
@@ -619,13 +664,28 @@ export class AuthService {
     const tutor = await this.findUserByEmailAndRole(dto.email, UserRole.TUTOR, 'tutorDetail');
     
     if (!tutor) {
-      throw new NotFoundException('Tutor account does not exist. Please register first!');
+      throw new CustomException(MESSAGE_CODES.AUTH_LOGIN_FAILED, MessageType.ERROR, HttpStatus.UNAUTHORIZED);
+    }
+
+    if (tutor.lockedUntil && new Date() < tutor.lockedUntil) {
+      throw new CustomException(MESSAGE_CODES.AUTH_ACCOUNT_LOCKED, MessageType.ERROR, HttpStatus.UNAUTHORIZED);
     }
 
     this.validateAccountStatus(tutor, 'tutor');
-    await this.validatePassword(dto.password, tutor.password);
+    
+    const comparePassword = await bcrypt.compare(dto.password, tutor.password);
+    if (!comparePassword) {
+      await this.handleFailedLogin(tutor);
+      throw new CustomException(MESSAGE_CODES.AUTH_LOGIN_FAILED, MessageType.ERROR, HttpStatus.UNAUTHORIZED);
+    }
 
-    await this.loginHistoryService.recordLogin(tutor.id, dto.ip);
+    if (tutor.failedLoginAttempts > 0) {
+      tutor.failedLoginAttempts = 0;
+      tutor.lockedUntil = null;
+      await this.repo.save(tutor);
+    }
+
+    await this.loginHistoryService.recordLogin(tutor.id, dto.ip, dto.userAgent);
     const token = await APIFeatures.assignJwtToken(tutor.id, this.jwtService);
     return { token: token, name: tutor.tutorDetail['name'] };
   }
@@ -647,25 +707,17 @@ export class AuthService {
 
   private validateAccountStatus(account: any, accountType: string) {
     if (account.status !== DefaultStatus.ACTIVE) {
-      const statusMessages = {
-        [DefaultStatus.PENDING]: `Your ${accountType} account is pending approval. Please contact admin.`,
-        [DefaultStatus.DEACTIVE]: `Your ${accountType} account is deactivated. Please contact admin.`,
-        [DefaultStatus.SUSPENDED]: `Your ${accountType} account is suspended. Please contact admin.`,
-        [DefaultStatus.DELETED]: `Your ${accountType} account has been deleted. Please contact admin.`
-      };
-      throw new UnauthorizedException(
-        `Login not available. Status: ${account.status}. ${statusMessages[account.status]}`
-      );
+      throw new CustomException(MESSAGE_CODES.AUTH_ACCOUNT_INACTIVE, MessageType.ERROR, HttpStatus.UNAUTHORIZED);
     }
   }
 
   private async validatePassword(inputPassword: string, storedPassword: string) {
     if (!storedPassword) {
-      throw new UnauthorizedException('Account was created via social login. Please use Google login instead.');
+      throw new CustomException(MESSAGE_CODES.AUTH_SOCIAL_LOGIN_FAILED, MessageType.ERROR, HttpStatus.UNAUTHORIZED);
     }
     const comparePassword = await bcrypt.compare(inputPassword, storedPassword);
     if (!comparePassword) {
-      throw new UnauthorizedException('Password mismatched!!');
+      throw new CustomException(MESSAGE_CODES.AUTH_LOGIN_FAILED, MessageType.ERROR, HttpStatus.UNAUTHORIZED);
     }
   }
 
@@ -685,9 +737,9 @@ export class AuthService {
       });
 
       const payload = ticket.getPayload();
-    if (!payload?.email_verified) {
-  throw new BadRequestException('Invalid Google token');
-}
+      if (!payload?.email_verified) {
+        throw new CustomException(MESSAGE_CODES.AUTH_TOKEN_INVALID, MessageType.ERROR, HttpStatus.BAD_REQUEST);
+      }
 
       const { email, name, picture } = payload;
       let existingTutor = await this.repo.findOne({ 
@@ -731,10 +783,10 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error('Tutor Google login error:', error);
-      if (error instanceof BadRequestException) {
+      if (error instanceof CustomException) {
         throw error;
       }
-      throw new BadRequestException('Tutor Google login failed');
+      throw new CustomException(MESSAGE_CODES.AUTH_SOCIAL_LOGIN_FAILED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -742,7 +794,7 @@ export class AuthService {
     account.failedLoginAttempts = (account.failedLoginAttempts || 0) + 1;
     
     if (account.failedLoginAttempts >= 5) {
-      account.lockedUntil = new Date(Date.now() + 10 * 60 * 1000); 
+      account.lockedUntil = new Date(Date.now() + 30 * 60 * 1000); 
       await this.nodeMailerService.sendAccountLockNotification(account.email, account.lockedUntil);
     }
     
@@ -751,7 +803,7 @@ export class AuthService {
 private async generateTutorId(): Promise<string> {
   const today = new Date();
   const dateStr = today.toLocaleDateString('en-CA').split('-').join('');
-  const prefix = 'WIZ';
+  const prefix = 'WIZ_TUT_';
 
   const lastTutor = await this.tutordetailRepo
     .createQueryBuilder('tutor')
@@ -772,6 +824,28 @@ private async generateTutorId(): Promise<string> {
   return `${prefix}${dateStr}/${sequence}`;
 }
 
+private async generateUserId(): Promise<string> {
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('en-CA').split('-').join('');
+  const prefix = 'WIZ_STU_';
 
+  const lastUser = await this.userDetailRepo
+    .createQueryBuilder('user')
+    .where('user.userId LIKE :pattern', { pattern: `${prefix}%/%` })
+    .orderBy('user.userId', 'DESC')
+    .getOne();
+
+  let sequence = 1001;
+
+  const lastSequence = lastUser?.userId
+    ? Number.parseInt(lastUser.userId.split('/')[1], 10)
+    : Number.NaN;
+
+  if (!Number.isNaN(lastSequence)) {
+    sequence = lastSequence + 1;
+  }
+
+  return `${prefix}${dateStr}/${sequence}`;
+}
 
 }

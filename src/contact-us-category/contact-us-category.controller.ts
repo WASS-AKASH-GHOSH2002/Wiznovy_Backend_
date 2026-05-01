@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Put } from '@nestjs/common';
 import { ContactUsCategoryService } from './contact-us-category.service';
-import { CreateContactUsCategoryDto, ContactUsCategoryPaginationDto, ContactUsCategoryStatusDto, BulkContactUsCategoryStatusDto } from './dto/create-contact-us-category.dto';
+import { CreateContactUsCategoryDto, ContactUsCategoryPaginationDto, ContactUsCategoryStatusDto, BulkContactUsCategoryStatusDto, ContactUsCategoryByTypeDto } from './dto/create-contact-us-category.dto';
 import { UpdateContactUsCategoryDto } from './dto/update-contact-us-category.dto';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { AuthGuard } from '@nestjs/passport';
@@ -17,6 +17,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @ApiTags('contact-us-category')
 @ApiBearerAuth('JWT-auth')
@@ -26,8 +27,9 @@ export class ContactUsCategoryController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.CREATE, 'contact-us-category'])
+  @CheckPermissions([PermissionAction.CREATE, 'contact_us_category'])
   @ApiOperation({ summary: 'Create new contact us category' })
   @ApiBody({ type: CreateContactUsCategoryDto })
   @ApiResponse({ status: 201, description: 'Category created successfully' })
@@ -40,8 +42,9 @@ export class ContactUsCategoryController {
 
   @Get('list')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.READ, 'contact-us-category'])
+  @CheckPermissions([PermissionAction.READ, 'contact_us_category'])
   @ApiOperation({ summary: 'Get paginated category list' })
   @ApiQuery({ name: 'limit', type: Number, required: true, example: 20 })
   @ApiQuery({ name: 'offset', type: Number, required: true, example: 0 })
@@ -56,15 +59,16 @@ export class ContactUsCategoryController {
 
   @Get('all')
   @ApiOperation({ summary: 'Get all categories for users' })
+  @ApiQuery({ name: 'type', enum: ['USER', 'TUTOR'], required: false })
   @ApiResponse({ status: 200, description: 'Returns all active categories' })
-  findByUser() {
-    return this.contactUsCategoryService.findByUser();
+  findByUser(@Query() dto: ContactUsCategoryByTypeDto) {
+    return this.contactUsCategoryService.findByUser(dto);
   }
 
   @Get(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.READ, 'contact-us-category'])
+  @CheckPermissions([PermissionAction.READ, 'contact_us_category'])
   @ApiOperation({ summary: 'Get category by ID' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
   @ApiResponse({ status: 200, description: 'Returns category details' })
@@ -76,8 +80,9 @@ export class ContactUsCategoryController {
 
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.UPDATE, 'contact-us-category'])
+  @CheckPermissions([PermissionAction.UPDATE, 'contact_us_category'])
   @ApiOperation({ summary: 'Update category details' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
   @ApiBody({ type: UpdateContactUsCategoryDto })
@@ -90,8 +95,9 @@ export class ContactUsCategoryController {
 
   @Put('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.UPDATE, 'contact-us-category'])
+  @CheckPermissions([PermissionAction.UPDATE, 'contact_us_category'])
   @ApiOperation({ summary: 'Update category status' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
   @ApiBody({ type: ContactUsCategoryStatusDto })
@@ -104,8 +110,9 @@ export class ContactUsCategoryController {
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.DELETE, 'contact-us-category'])
+  @CheckPermissions([PermissionAction.DELETE, 'contact_us_category'])
   @ApiOperation({ summary: 'Delete category' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
   @ApiResponse({ status: 200, description: 'Category deleted successfully' })
@@ -117,8 +124,9 @@ export class ContactUsCategoryController {
 
   @Put('bulk-status')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.UPDATE, 'contact-us-category'])
+  @CheckPermissions([PermissionAction.UPDATE, 'contact_us_category'])
   @ApiOperation({ summary: 'Bulk update category status' })
   @ApiBody({ type: BulkContactUsCategoryStatusDto })
   @ApiResponse({ status: 200, description: 'Categories status updated successfully' })

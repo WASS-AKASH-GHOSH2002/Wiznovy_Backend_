@@ -13,6 +13,7 @@ import { Account } from 'src/account/entities/account.entity';
 import { diskStorage } from 'multer';
 import { extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 
 
@@ -40,8 +41,10 @@ export class VideoLectureController {
   }
 
   @Post('admin')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.CREATE, 'video_lecture'])
   @UseInterceptors(
     FileFieldsInterceptor(
       [{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }],
@@ -103,14 +106,13 @@ export class VideoLectureController {
   }
 
   @Put('admin/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'video_lecture'])
   adminupdate(@Param('id') id: string, @Body() dto: UpdateVideoLectureDto) {
     return this.videoLectureService.update(id, dto);
   }
-
-
-
 
   @Put('video/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -126,8 +128,10 @@ export class VideoLectureController {
   }
 
   @Put('admin/video/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'video_lecture'])
   @UseInterceptors(
     FileInterceptor('file', VideoLectureController.createSingleFileConfig('./uploads/VideoLecture/videos', FileSizeLimit.VIDEO_SIZE))
   )
@@ -152,8 +156,10 @@ export class VideoLectureController {
   }
 
   @Put('admin/thumbnail/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'video_lecture'])
   @UseInterceptors(
     FileInterceptor('file', VideoLectureController.createSingleFileConfig('./uploads/VideoLecture/thumbnails', FileSizeLimit.IMAGE_SIZE))
   )

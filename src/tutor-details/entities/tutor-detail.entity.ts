@@ -1,37 +1,41 @@
 import { Account } from 'src/account/entities/account.entity';
+import { Budget } from 'src/budget/entities/budget.entity';
 import { City } from 'src/city/entities/city.entity';
 import { Country } from 'src/country/entities/country.entity';
-import { Gender, Level } from 'src/enum';
+import { Gender, Level, LanguageProficiency } from 'src/enum';
 import { Language } from 'src/languages/entities/language.entity';
 import { Qualification } from 'src/qualification/entities/qualification.entity';
 import { State } from 'src/state/entities/state.entity';
 import { Subject } from 'src/subjects/entities/subject.entity';
+import { TutorSubject } from './tutor-subject.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+
 
 @Entity('tutor_detail')
 export class TutorDetail {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 55, nullable: true })
+  @Column({ type: 'varchar', length:100, nullable: true })
   name: string;
 
-  @Column({ type: 'varchar', length: 20, unique: true, nullable: true })
+  @Column({ type: 'varchar', length: 30, unique: true, nullable: true })
   tutorId: string;
 
   @Column({ type: 'enum', enum: Gender, nullable: true })
   gender: Gender;
 
-  @Column({ type: 'enum', enum: Level, default: Level.BEGINNER })
+  @Column({ type: 'enum', enum: Level, })
   expertiseLevel: Level;
  
   @Column({ type: 'date', nullable: true })
@@ -50,6 +54,12 @@ export class TutorDetail {
   documentName:string;
 
   @Column({ type: 'text', nullable: true })
+  qualificationCertification: string;
+
+  @Column({ type: 'text', nullable: true })
+  qualificationCertificationName: string;
+
+  @Column({ type: 'text', nullable: true })
   bio: string;
 
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
@@ -58,14 +68,29 @@ export class TutorDetail {
   @Column({ type: 'int', default: 0 })
   totalRatings: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, default: 0 })
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, default: 0, transformer: { to: (v) => v, from: (v) => parseFloat(Number(v).toFixed(2)) } })
   hourlyRate: number;
+  
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, default: 0, transformer: { to: (v) => v, from: (v) => parseFloat(Number(v).toFixed(2)) } })
+  trailRate: number;
 
-  @Column({ type: 'int', default: 15, comment: 'Buffer time between sessions in minutes' })
-  bufferTimeMinutes: number;
+  @Column({ type: 'text', nullable: true })
+  introductionVideo: string;
 
-  @Column({ type: 'int', default: 60, comment: 'Session duration in minutes' })
-  sessionDuration: number;
+  @Column({ type: 'text', nullable: true })
+  introductionVideoPath: string;
+
+  @Column({ type: 'int', nullable: true, comment: 'Years of teaching experience' })
+  teachingExperience: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  lat: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  lng: number;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  timezone: string;
 
 
   @CreateDateColumn()
@@ -92,8 +117,14 @@ export class TutorDetail {
   @Column({ type: 'uuid', nullable: true })
   languageId: string;
 
+  @Column({ type: 'enum', enum: LanguageProficiency, nullable: true })
+  languageProficiency: LanguageProficiency;
+
   @Column({ type: 'uuid', nullable: true })
   qualificationId: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  budgetId: string;
 
 
   @OneToOne(() => Account, (account) => account.tutorDetail, {
@@ -109,6 +140,9 @@ export class TutorDetail {
     onUpdate: 'CASCADE',
   })
   subject: Subject;
+
+  @OneToMany(() => TutorSubject, (ts) => ts.tutor)
+  tutorSubjects: TutorSubject[];
 
     @ManyToOne(() => City, (city) => city.tutorDetails, {
     onDelete: 'SET NULL',
@@ -134,12 +168,19 @@ export class TutorDetail {
   })
   language: Language;
 
+  
+
   @ManyToOne(() => Qualification, (qualification) => qualification.tutorDetails, {
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   })
   qualification: Qualification;
-  
 
-
+  @ManyToOne(() => Budget, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'budgetId' })
+  budget: Budget;
 }

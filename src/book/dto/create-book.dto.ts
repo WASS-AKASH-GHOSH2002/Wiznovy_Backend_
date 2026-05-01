@@ -11,7 +11,7 @@ export class CreateBookDto {
   @IsString()
   authorName: string;
 
-  @IsOptional()
+ @IsNotEmpty()
   @IsString()
   description: string;
 

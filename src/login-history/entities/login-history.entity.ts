@@ -18,6 +18,9 @@ export class LoginHistory {
     @Column({ type: 'varchar', length: 100, nullable: true })
     ip: string;
 
+    @Column({ type: 'text', nullable: true })
+    userAgent: string;
+
     @ManyToOne(() => Account, (account) => account.loginHistory)
     account: Account;
 }

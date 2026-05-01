@@ -22,8 +22,11 @@ export class UserDetail {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 55, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   name: string;
+
+  @Column({ type: 'varchar', length: 30, nullable: true, unique: true })
+  userId: string;
 
   @Column({ type: 'enum', enum: Gender, nullable: true })
   gender: Gender;
@@ -35,6 +38,15 @@ export class UserDetail {
   dob: Date;
   @Column({ type: 'varchar', length: 5000, nullable: true })
   address: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  lat: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+  lng: number;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  timezone: string;
 
   @Column({ type: 'text', nullable: true })
   profile: string;

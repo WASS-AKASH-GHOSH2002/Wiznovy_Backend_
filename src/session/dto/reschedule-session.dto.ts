@@ -6,7 +6,7 @@ export class RescheduleSessionDto {
     description: 'The ID of the session to reschedule',
     example: '123e4567-e89b-12d3-a456-426614174000'
   })
-  @IsNotEmpty()
+
   @IsUUID()
   sessionId: string;
 

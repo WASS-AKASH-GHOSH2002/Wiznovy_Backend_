@@ -172,4 +172,8 @@ export class CoursePaginationDto {
   @IsOptional()
   @IsString()
   languageId: string;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  topCourse: boolean;
 }

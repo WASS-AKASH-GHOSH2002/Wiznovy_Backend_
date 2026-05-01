@@ -12,6 +12,9 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
 import { AdminActionLogModule } from 'src/admin-action-log/admin-action-log.module';
 import { FileUploadErrorFilter } from '../utils/file-upload-error.filter';
 
+import { NodeMailerModule } from 'src/node-mailer/node-mailer.module';
+import { SettingsModule } from 'src/settings/settings.module';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -23,6 +26,8 @@ import { FileUploadErrorFilter } from '../utils/file-upload-error.filter';
     AuthModule,
     NotificationsModule,
     AdminActionLogModule,
+    NodeMailerModule,
+    SettingsModule,
   ],
   controllers: [CourseController],
   providers: [

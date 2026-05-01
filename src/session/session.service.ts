@@ -1,22 +1,32 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Session } from './entities/session.entity';
 import { TutorDetail } from '../tutor-details/entities/tutor-detail.entity';
 import { UserPurchase } from '../user-purchase/entities/user-purchase.entity';
 import { Account } from '../account/entities/account.entity';
-import { CreateSessionDto, SessionPaginationDto } from './dto/create-session.dto';
+import { Wallet } from '../wallet/entities/wallet.entity';
+import { CreateSessionDto, SessionPaginationDto, BookRegularSessionDto, BookTrialSessionDto } from './dto/create-session.dto';
 import { CancelSessionDto } from './dto/cancel-session.dto';
 import { AdminCancelSessionDto } from './dto/admin-cancel-session.dto';
 import { RescheduleSessionDto } from './dto/reschedule-session.dto';
-import { SessionStatus, PurchaseType, PaymentStatus, SessionType, } from '../enum';
+import { SessionStatus, PurchaseType, PaymentStatus, SessionType, TransactionType, TransactionStatus, NotificationType } from '../enum';
+import { buildCsv, CsvColumn, formatCsvDate, generateCsvFileName } from 'src/utils/csv.utils';
+import { ExportStudentsCsvDto, DateRangePreset } from '../account/dto/export-students-csv.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TutorAvailabilityService } from '../tutor-availability/tutor-availability.service';
 import { NodeMailerService } from '../node-mailer/node-mailer.service';
 import { ZoomService } from '../zoom/zoom.service';
 import { AdminActionLogService } from '../admin-action-log/admin-action-log.service';
 import { SlotLockService } from '../slot-lock/slot-lock.service';
-import { OrderNumberGenerator } from '../utils/order-number.util';
+import { SettingsService } from '../settings/settings.service';
+import { WalletTransaction } from '../wallet-transaction/entities/wallet-transaction.entity';
+
+
+import { CustomException } from '../shared/exceptions/custom.exception';
+import { MessageType } from '../shared/constants/message-type.enum';
+import { MESSAGE_CODES } from '../shared/constants/message-codes';
+import { HttpStatus } from '@nestjs/common';
 
 
 @Injectable()
@@ -32,208 +42,136 @@ export class SessionService {
     private readonly purchaseRepo: Repository<UserPurchase>,
     @InjectRepository(Account)
     private readonly accountRepo: Repository<Account>,
+    @InjectRepository(Wallet)
+    private readonly walletRepo: Repository<Wallet>,
+    @InjectRepository(WalletTransaction)
+    private readonly walletTxRepo: Repository<WalletTransaction>,
     private readonly slotLockService: SlotLockService,
     private readonly notificationsService: NotificationsService,
     private readonly tutorAvailabilityService: TutorAvailabilityService,
     private readonly nodeMailerService: NodeMailerService,
     private readonly zoomService: ZoomService,
     private readonly adminActionLogService: AdminActionLogService,
+    private readonly settingsService: SettingsService,
   ) {}
 
-  async create(dto: CreateSessionDto, userId: string) {
-    
-    const lockAcquired = await this.slotLockService.acquireSlotLock(
-      dto.tutorId, dto.sessionDate, dto.startTime, userId
-    );
-    
+
+  async bookRegularSession(dto: BookRegularSessionDto, userId: string) {
+    const tutor = await this.validateTutor(dto.tutorId);
+    const sessionSettings = await this.settingsService.getSessionSettings();
+    const duration = Number(sessionSettings?.regular_session_duration_minutes) || 60;
+    const finalEndTime = this.calculateEndTime(dto.startTime, duration);
+    const amount = this.calculateSessionPrice(tutor.hourlyRate, duration, SessionType.REGULAR);
+
+    return this.processBooking({
+      tutorId: dto.tutorId,
+      userId,
+      sessionDate: dto.sessionDate,
+      startTime: dto.startTime,
+      endTime: finalEndTime,
+      duration,
+      amount,
+      notes: dto.notes,
+      sessionType: SessionType.REGULAR,
+    });
+  }
+
+  async bookTrialSession(dto: BookTrialSessionDto, userId: string) {
+    const tutor = await this.validateTutor(dto.tutorId);
+    await this.validateNoExistingTrial(userId, dto.tutorId);
+    const sessionSettings = await this.settingsService.getSessionSettings();
+    const duration = Number(sessionSettings?.trial_duration_minutes) || 25;
+    const finalEndTime = this.calculateEndTime(dto.startTime, duration);
+
+    return this.processBooking({
+      tutorId: dto.tutorId,
+      userId,
+      sessionDate: dto.sessionDate,
+      startTime: dto.startTime,
+      endTime: finalEndTime,
+      duration,
+      amount: Number(tutor.trailRate) || 0,
+      notes: dto.notes,
+      sessionType: SessionType.TRIAL,
+    });
+  }
+
+ 
+
+  private async processBooking(params: {
+    tutorId: string;
+    userId: string;
+    sessionDate: string;
+    startTime: string;
+    endTime: string;
+    duration: number;
+    amount: number;
+    notes?: string;
+    sessionType: SessionType;
+  }) {
+    const { tutorId, userId, sessionDate, startTime, endTime, duration, amount, notes, sessionType } = params;
+
+    const lockAcquired = await this.slotLockService.acquireSlotLock(tutorId, sessionDate, startTime, userId);
     if (!lockAcquired) {
-      throw new ConflictException('This time slot is currently being booked by another user');
+      throw new ConflictException('Session slot is locked by another user');
     }
 
     try {
-      const tutor = await this.tutorRepo.findOne({
-        where: { accountId: dto.tutorId }
-      });
-
-      if (!tutor) {
-        throw new NotFoundException('Tutor not found');
-      }
-
-      let finalEndTime = dto.endTime;
-      
-      if (dto.sessionType === SessionType.TRIAL && dto.trialDuration) {
-        const startTimeParts = dto.startTime.split(':');
-        const startHour = Number.parseInt(startTimeParts[0]);
-        const startMinute = Number.parseInt(startTimeParts[1]);
-        
-        const endMinute = startMinute + dto.trialDuration;
-        const endHour = startHour + Math.floor(endMinute / 60);
-        const finalMinute = endMinute % 60;
-        
-        finalEndTime = `${endHour.toString().padStart(2, '0')}:${finalMinute.toString().padStart(2, '0')}`;
-      }
-      
       const savedSession = await this.sessionRepo.manager.transaction(async manager => {
-        const overlappingSessions = await manager.createQueryBuilder(Session, 'session')
-          .where('session.tutorId = :tutorId', { tutorId: dto.tutorId })
-          .andWhere('DATE(session.sessionDate) = DATE(:sessionDate)', { sessionDate: dto.sessionDate })
-          .andWhere('session.status IN (:...statuses)', { statuses: [ SessionStatus.SCHEDULED] })
-          .andWhere(
-            '(session.startTime < :endTime AND session.endTime > :startTime)',
-            { startTime: dto.startTime, endTime: finalEndTime }
-          )
-          .getMany();
-
-        if (overlappingSessions.length > 0) {
-          throw new ConflictException('Time slot conflicts with existing booking');
-        }
-
-        const duration = this.calculateDuration(dto.startTime, finalEndTime);
-        const sessionPrice = this.calculateSessionPrice(tutor.hourlyRate, duration, dto.sessionType);
+        await this.checkSlotConflict(manager, tutorId, sessionDate, startTime, endTime);
 
         const session = manager.create(Session, {
-          userId,
-          tutorId: dto.tutorId,
-          sessionDate: new Date(dto.sessionDate),
-          startTime: dto.startTime,
-          endTime: finalEndTime,
-          duration,
-          amount: sessionPrice,
-          notes: dto.notes,
-          sessionType: dto.sessionType,
-          status: SessionStatus.SCHEDULED
+          userId, tutorId, sessionDate, startTime, endTime,
+          duration, amount, notes, sessionType,
+          status: SessionStatus.PENDING,
         });
-        const savedSession = await manager.save(session);
-
-        const purchase = manager.create(UserPurchase, {
-          accountId: userId,
-          sessionId: savedSession.id,
-          purchaseType: PurchaseType.SESSION,
-          amount: sessionPrice,
-          originalAmount: sessionPrice,
-          orderNumber: OrderNumberGenerator.generateOrderNumber(),
-          paymentStatus: PaymentStatus.COMPLETED,
-          transactionId: `TEST_${Date.now()}`,
-          paidAt: new Date()
-        });
-        const savedPurchase = await manager.save(purchase);
-
-        savedSession.purchaseId = savedPurchase.id;
-        await manager.save(savedSession);
-
-        return savedSession;
+        const saved = await manager.save(session);
+        return saved;
       });
 
-
-      // Create Zoom meeting AFTER transaction completes
-      let zoomMeeting = null;
-      try {
-        console.log('SESSION SERVICE - Creating Zoom meeting for session:', savedSession.id);
-        zoomMeeting = await this.zoomService.createMeetingForSession({
-          id: savedSession.id,
-          sessionDate: new Date(dto.sessionDate),
-          startTime: dto.startTime,
-          duration: savedSession.duration,
-          tutor: { tutorDetail: [{ name: tutor.name }] }
-        } as any);
-        console.log('SESSION SERVICE - Zoom meeting created:', zoomMeeting);
-      } catch (error) {
-        this.logger.error('Failed to create Zoom meeting:', error);
-      }
-
-      const zoomDetails = {
-        joinUrl: zoomMeeting?.joinUrl,
-        startUrl: zoomMeeting?.startUrl,
-        meetingId: zoomMeeting?.meetingId,
-        passcode: zoomMeeting?.password
-      };
-
-      const user = await this.accountRepo.findOne({
-        where: { id: userId },
-        relations: ['userDetail']
-      });
-
-      const tutorAccount = await this.accountRepo.findOne({
-        where: { id: dto.tutorId },
-        relations: ['tutorDetail']
-      });
-
-      const userName = user?.userDetail?.[0]?.name || 'Student';
-      const tutorName = tutorAccount?.tutorDetail?.[0]?.name || 'Tutor';
-
-      await this.notificationsService.create({
-        title: 'Session Booked Successfully',
-        desc: `Your session on ${dto.sessionDate} at ${dto.startTime} has been confirmed`,
-        type: 'SESSION_BOOKED',
-        accountId: userId
-      });
-
-      await this.notificationsService.create({
-        title: 'New Session Booked',
-        desc: `You have a new session on ${dto.sessionDate} at ${dto.startTime}`,
-        type: 'SESSION_BOOKED',
-        accountId: dto.tutorId
-      });
-
-      if (zoomMeeting) {
-        await this.notificationsService.create({
-          title: 'Zoom Meeting Ready',
-          desc: `Your session is confirmed! Meeting ID: ${zoomMeeting.meetingId}. Join 5 minutes early.`,
-          type: 'SESSION_BOOKED',
-          accountId: userId
-        });
-
-        await this.notificationsService.create({
-          title: 'Zoom Meeting Ready',
-          desc: `Session with ${userName} confirmed! Meeting ID: ${zoomMeeting.meetingId}. Start 10 minutes early.`,
-          type: 'SESSION_BOOKED',
-          accountId: dto.tutorId
-        });
-      }
-
-      if (user?.email) {
-        await this.nodeMailerService.sendUserSessionConfirmation(
-          user.email,
-          userName,
-          tutorName,
-          dto.sessionDate,
-          dto.startTime,
-          finalEndTime,
-          {
-            joinUrl: zoomDetails.joinUrl,
-            meetingId: zoomDetails.meetingId,
-            passcode: zoomDetails.passcode
-          }
-        );
-      }
-
-      if (tutorAccount?.email) {
-        await this.nodeMailerService.sendTutorSessionConfirmation(
-          tutorAccount.email,
-          tutorName,
-          userName,
-          dto.sessionDate,
-          dto.startTime,
-          finalEndTime,
-          {
-            startUrl: zoomDetails.startUrl,
-            meetingId: zoomDetails.meetingId,
-            passcode: zoomDetails.passcode
-          }
-        );
-      }
-
-      return {
-        ...savedSession,
-        message: 'Session created and confirmed for testing.',
-      };
+      return { ...savedSession, message: 'Session created successfully.' };
     } catch (error) {
-      await this.slotLockService.releaseSlotLock(dto.tutorId, dto.sessionDate, dto.startTime);
+      await this.slotLockService.releaseSlotLock(tutorId, sessionDate, startTime);
       this.logger.error(`Session creation failed for user ${userId}:`, error);
       throw error;
     } finally {
-      await this.slotLockService.releaseSlotLock(dto.tutorId, dto.sessionDate, dto.startTime);
+      await this.slotLockService.releaseSlotLock(tutorId, sessionDate, startTime);
     }
+  }
+
+  private async validateTutor(tutorId: string) {
+    const tutor = await this.tutorRepo.findOne({ where: { accountId: tutorId } });
+    if (!tutor) throw new NotFoundException('Tutor not found');
+    return tutor;
+  }
+
+  private async validateNoExistingTrial(userId: string, tutorId: string) {
+    const sessionSettings = await this.settingsService.getSessionSettings();
+    const maxTrials = Number(sessionSettings?.max_trials_per_student_tutor) || 1;
+
+    const trialCount = await this.sessionRepo.count({
+      where: { userId, tutorId, sessionType: SessionType.TRIAL },
+    });
+
+    if (trialCount >= maxTrials) {
+      throw new ConflictException(`You have reached the maximum of ${maxTrials} trial session(s) with this tutor`);
+    }
+  }
+
+  private calculateEndTime(startTime: string, durationMinutes: number): string {
+    const [h, m] = startTime.split(':').map(Number);
+    const total = h * 60 + m + durationMinutes;
+    return `${Math.floor(total / 60).toString().padStart(2, '0')}:${(total % 60).toString().padStart(2, '0')}`;
+  }
+
+  private async checkSlotConflict(manager: any, tutorId: string, sessionDate: string, startTime: string, endTime: string) {
+    const overlapping = await manager.createQueryBuilder(Session, 'session')
+      .where('session.tutorId = :tutorId', { tutorId })
+      .andWhere('DATE(session.sessionDate) = DATE(:sessionDate)', { sessionDate })
+      .andWhere('session.status IN (:...statuses)', { statuses: [SessionStatus.SCHEDULED] })
+      .andWhere('session.startTime < :endTime AND session.endTime > :startTime', { startTime, endTime })
+      .getMany();
+    if (overlapping.length > 0) throw new ConflictException('Session slot conflict with existing session');
   }
 
   async findUserSessions(userId: string, dto: SessionPaginationDto) {
@@ -334,7 +272,7 @@ export class SessionService {
     }
 
     if (session.userId !== userId && session.tutorId !== userId) {
-      throw new ForbiddenException('You can only view your own sessions');
+      throw new ForbiddenException('You are not allowed to view this session');
     }
 
     return session;
@@ -430,106 +368,437 @@ export class SessionService {
     return { result, total };
   }
 
+  // ─── Cancellation helpers (Single Responsibility) ───────────────────
+
+  private getCancellationTier(
+    hoursUntilSession: number,
+    early: number,
+    mid: number,
+  ): 'early' | 'mid' | 'late' {
+    if (hoursUntilSession >= early) return 'early';
+    if (hoursUntilSession >= mid) return 'mid';
+    return 'late';
+  }
+
+  private calculateRefundAmount(
+    sessionAmount: number,
+    tier: 'early' | 'mid' | 'late',
+    earlyPercent: number,
+    midPercent: number,
+    latePercent: number,
+  ): number {
+    const percent =
+      tier === 'early' ? earlyPercent :
+      tier === 'mid'   ? midPercent   :
+                         latePercent;
+    return Math.round((Number(sessionAmount) * Number(percent)) / 100 * 100) / 100;
+  }
+
+  private async creditWallet(accountId: string, amount: number, note: string): Promise<void> {
+    if (amount <= 0) return;
+
+    let wallet = await this.walletRepo.findOne({ where: { accountId } });
+    if (!wallet) {
+      wallet = this.walletRepo.create({ accountId, balance: 0, totalEarnings: 0, totalWithdrawals: 0 });
+      wallet = await this.walletRepo.save(wallet);
+    }
+
+    const balanceBefore = Number(wallet.balance);
+    wallet.balance = balanceBefore + amount;
+    wallet.totalEarnings = Number(wallet.totalEarnings) + amount;
+    await this.walletRepo.save(wallet);
+
+    await this.walletTxRepo.save(
+      this.walletTxRepo.create({
+        walletId: wallet.id,
+        accountId,
+        amount,
+        type: TransactionType.CREDIT,
+        status: TransactionStatus.COMPLETED,
+        balanceBefore,
+        balanceAfter: wallet.balance,
+        paymentIntentId: note,
+      }),
+    );
+  }
+
+  // ─── Cancel Session ───────────────────────────────────────────────────
+
   async cancelSession(dto: CancelSessionDto, userId: string) {
     const session = await this.sessionRepo.findOne({
       where: { id: dto.sessionId },
-      relations: ['user', 'tutor']
+      relations: ['user', 'tutor'],
     });
 
-    if (!session) {
-      throw new NotFoundException('Session not found');
-    }
-
-    if (session.userId !== userId) {
-      throw new ConflictException('You can only cancel your own sessions');
-    }
-
-    if (session.status !== SessionStatus.SCHEDULED) {
-      throw new BadRequestException('Only scheduled sessions can be cancelled');
-    }
+    if (!session) throw new NotFoundException('Session not found');
+    if (session.userId !== userId) throw new ForbiddenException('You are not allowed to cancel this session');
+    if (session.status !== SessionStatus.SCHEDULED) throw new BadRequestException('Session cannot be cancelled in its current status');
 
     const sessionDateTime = new Date(`${session.sessionDate}T${session.startTime}`);
-    const now = new Date();
-    const hoursUntilSession = (sessionDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    const hoursUntilSession = (sessionDateTime.getTime() - Date.now()) / (1000 * 60 * 60);
 
-    if (hoursUntilSession < 2) {
-      throw new BadRequestException('Sessions cannot be cancelled less than 2 hours before start time');
+    // fetch cancellation rules
+    const cancelSettings = await this.settingsService.getCancellationSettings();
+    const earlyThreshold = Number(cancelSettings?.early_cancel_threshold_hours) || 8;
+    const midThreshold   = Number(cancelSettings?.mid_cancel_threshold_hours)   || 6;
+    const earlyPercent   = Number(cancelSettings?.early_cancel_refund_percent)  || 100;
+    const midPercent     = Number(cancelSettings?.mid_cancel_credit_percent)    || 50;
+    const latePercent    = Number(cancelSettings?.late_cancel_credit_percent)   || 0;
+
+    if (hoursUntilSession < earlyThreshold) {
+      throw new BadRequestException(`Cancellation is not allowed within ${earlyThreshold} hours of the session`);
     }
 
-    session.status = SessionStatus.CANCELLED;
+    const tier = this.getCancellationTier(hoursUntilSession, earlyThreshold, midThreshold);
+    const refundAmount = this.calculateRefundAmount(
+      session.amount, tier, earlyPercent, midPercent, latePercent,
+    );
+
+    // cancel session
+    session.status      = SessionStatus.CANCELLED;
     session.cancelledAt = new Date();
     session.cancelledBy = userId;
+    if (dto.reason) session.notes = dto.reason;
     await this.sessionRepo.save(session);
-    let refundProcessed = false;
+
+    // update purchase status
     if (session.purchaseId) {
       const purchase = await this.purchaseRepo.findOne({ where: { id: session.purchaseId } });
       if (purchase && purchase.paymentStatus === PaymentStatus.COMPLETED) {
-        const refundEligible = hoursUntilSession >= 24;
-        if (refundEligible) {
-          purchase.paymentStatus = PaymentStatus.REFUNDED;
-          await this.purchaseRepo.save(purchase);
-          refundProcessed = true;
-        }
+        purchase.paymentStatus = tier === 'early' ? PaymentStatus.REFUNDED : PaymentStatus.CANCELLED;
+        await this.purchaseRepo.save(purchase);
       }
     }
 
-    const user = await this.accountRepo.findOne({
-      where: { id: session.userId },
-      relations: ['userDetail']
-    });
+    // credit wallet
+    await this.creditWallet(
+      userId,
+      refundAmount,
+      `CANCEL_REFUND_${session.id}`,
+    );
 
-    const tutorAccount = await this.accountRepo.findOne({
-      where: { id: session.tutorId },
-      relations: ['tutorDetail']
-    });
+    // notifications
+    const user = await this.accountRepo.findOne({ where: { id: session.userId }, relations: ['userDetail'] });
+    const tutorAccount = await this.accountRepo.findOne({ where: { id: session.tutorId }, relations: ['tutorDetail'] });
 
     if (user?.email) {
       await this.nodeMailerService.sendSessionCancellationEmail(
         user.email,
         user.userDetail?.[0]?.name || 'Student',
         tutorAccount?.tutorDetail?.[0]?.name || 'Tutor',
-        {
-          date: typeof session.sessionDate === 'string' ? session.sessionDate : session.sessionDate.toISOString().split('T')[0],
-          startTime: session.startTime,
-          endTime: session.endTime
-        },
+        { date: session.sessionDate as string, startTime: session.startTime, endTime: session.endTime },
         'student',
-        hoursUntilSession >= 24
+        tier === 'early',
       );
     }
 
-    await this.notificationsService.create({
-      title: 'Session Cancelled',
-      desc: `Your session on ${session.sessionDate} at ${session.startTime} has been cancelled`,
-      type: 'SESSION_CANCELLED',
-      accountId: session.userId
-    });
-
-    await this.notificationsService.create({
-      title: 'Session Cancelled by Student',
-      desc: `Session on ${session.sessionDate} at ${session.startTime} was cancelled by the student`,
-      type: 'SESSION_CANCELLED',
-      accountId: session.tutorId
-    });
+    const reasonText = dto.reason ? `: ${dto.reason}` : '';
+    await this.notificationsService.create({ title: 'Session Cancelled', desc: `Your session on ${session.sessionDate} at ${session.startTime} has been cancelled${reasonText}`, type: 'SESSION_CANCELLED', accountId: session.userId });
+    await this.notificationsService.create({ title: 'Session Cancelled by Student', desc: `Session on ${session.sessionDate} at ${session.startTime} was cancelled by the student${reasonText}`, type: 'SESSION_CANCELLED', accountId: session.tutorId });
 
     return {
-      message: 'Session cancelled successfully. The time slot is now available for other users to book.',
-      refundEligible: hoursUntilSession >= 24,
-      refundProcessed,
-      slotReleased: true,
+      message: 'Session cancelled successfully.',
+      tier,
+      refundAmount,
+      walletCredited: refundAmount > 0,
       session: {
         ...session,
-        user: {
-          id: user?.id,
-          name: user?.userDetail?.[0]?.name,
-          email: user?.email
-        },
-        tutor: {
-          id: tutorAccount?.id,
-          name: tutorAccount?.tutorDetail?.[0]?.name,
-          email: tutorAccount?.email
-        }
+        user:  { id: user?.id,         name: user?.userDetail?.[0]?.name,         email: user?.email },
+        tutor: { id: tutorAccount?.id, name: tutorAccount?.tutorDetail?.[0]?.name, email: tutorAccount?.email },
+      },
+    };
+  }
+
+  // ─── Reschedule helpers (Single Responsibility) ─────────────────────
+
+  private getRescheduleTier(
+    hoursUntilSession: number,
+    earlyThreshold: number,
+    midThreshold: number,
+  ): 'early' | 'mid' | 'late' {
+    if (hoursUntilSession >= earlyThreshold) return 'early';
+    if (hoursUntilSession >= midThreshold) return 'mid';
+    return 'late';
+  }
+
+  private calculateRescheduleFee(
+    sessionAmount: number,
+    tier: 'early' | 'mid' | 'late',
+    earlyFeePercent: number,
+    midFeePercent: number,
+    lateFeePercent: number,
+  ): number {
+    const percent =
+      tier === 'early' ? earlyFeePercent :
+      tier === 'mid'   ? midFeePercent   :
+                         lateFeePercent;
+    return Math.round((Number(sessionAmount) * Number(percent)) / 100 * 100) / 100;
+  }
+
+  private async debitWallet(accountId: string, amount: number, note: string): Promise<void> {
+    if (amount <= 0) return;
+
+    const wallet = await this.walletRepo.findOne({ where: { accountId } });
+    if (!wallet) throw new BadRequestException('Wallet not found');
+
+    if (Number(wallet.balance) < amount) {
+      throw new BadRequestException(`Insufficient wallet balance. Available: $${wallet.balance}, Required: $${amount}`);
+    }
+
+    const balanceBefore = Number(wallet.balance);
+    wallet.balance = balanceBefore - amount;
+    await this.walletRepo.save(wallet);
+
+    await this.walletTxRepo.save(
+      this.walletTxRepo.create({
+        walletId: wallet.id,
+        accountId,
+        amount,
+        type: TransactionType.DEBIT,
+        status: TransactionStatus.COMPLETED,
+        balanceBefore,
+        balanceAfter: wallet.balance,
+        paymentIntentId: note,
+      }),
+    );
+  }
+
+  // ─── User Reschedule Session ──────────────────────────────────────────
+
+  async userRescheduleSession(sessionId: string, userId: string, dto: RescheduleSessionDto) {
+    const session = await this.sessionRepo.findOne({
+      where: { id: sessionId },
+      relations: ['user', 'tutor'],
+    });
+
+    if (!session) throw new NotFoundException('Session not found');
+    if (session.userId !== userId) throw new ForbiddenException('You are not allowed to reschedule this session');
+    if (session.status !== SessionStatus.SCHEDULED) throw new BadRequestException('Session cannot be rescheduled in its current status');
+
+    const rescheduleSettings = await this.settingsService.getRescheduleSettings();
+
+    const earlyThreshold = Number(rescheduleSettings?.reschedule_early_threshold_hours) || 8;
+    const midThreshold   = Number(rescheduleSettings?.reschedule_mid_threshold_hours)   || 4;
+    const blockThreshold = Number(rescheduleSettings?.reschedule_block_threshold_hours) || 8;
+    const maxReschedules = Number(rescheduleSettings?.max_reschedules_per_session)       || 3;
+    const earlyFeePercent = Number(rescheduleSettings?.reschedule_early_fee_percent)    || 0;
+    const midFeePercent   = Number(rescheduleSettings?.reschedule_mid_fee_percent)      || 25;
+    const lateFeePercent  = Number(rescheduleSettings?.reschedule_late_fee_percent)     || 50;
+
+    const hoursUntilSession = (new Date(`${session.sessionDate}T${session.startTime}`).getTime() - Date.now()) / (1000 * 60 * 60);
+
+    // CHECK 1: max reschedules
+    if ((session.rescheduleCount || 0) >= maxReschedules) {
+      throw new CustomException(MESSAGE_CODES.SESSION_RESCHEDULE_LIMIT_REACHED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
+    }
+
+    // CHECK 2: block threshold
+    if (hoursUntilSession < blockThreshold) {
+      throw new BadRequestException(`Rescheduling is not allowed within ${blockThreshold} hours of the session`);
+    }
+
+    const tier = this.getRescheduleTier(hoursUntilSession, earlyThreshold, midThreshold);
+    const feeAmount = this.calculateRescheduleFee(session.amount, tier, earlyFeePercent, midFeePercent, lateFeePercent);
+
+    // debit fee from wallet if applicable
+    if (feeAmount > 0) {
+      await this.debitWallet(userId, feeAmount, `RESCHEDULE_FEE_${session.id}`);
+    }
+
+    const oldDate      = session.sessionDate;
+    const oldStartTime = session.startTime;
+    const oldEndTime   = session.endTime;
+
+    session.sessionDate     = dto.newSessionDate;
+    session.startTime       = dto.newStartTime;
+    session.endTime         = dto.newEndTime;
+    session.duration        = this.calculateDuration(dto.newStartTime, dto.newEndTime);
+    session.rescheduleCount = (session.rescheduleCount || 0) + 1;
+    await this.sessionRepo.save(session);
+
+    const user = await this.accountRepo.findOne({ where: { id: session.userId }, relations: ['userDetail'] });
+    const tutorAccount = await this.accountRepo.findOne({ where: { id: session.tutorId }, relations: ['tutorDetail'] });
+
+    const feeMsg = feeAmount > 0 ? ` A reschedule fee of $${feeAmount} (${tier === 'mid' ? midFeePercent : lateFeePercent}%) was charged.` : ' No extra charges applied.';
+    await this.notificationsService.create({ title: 'Session Rescheduled', desc: `Your session has been rescheduled from ${oldDate} ${oldStartTime} to ${dto.newSessionDate} ${dto.newStartTime}.${feeMsg}`, type: NotificationType.SESSION_RESCHEDULED, accountId: session.userId });
+    await this.notificationsService.create({ title: 'Session Rescheduled by Student', desc: `Session rescheduled from ${oldDate} ${oldStartTime} to ${dto.newSessionDate} ${dto.newStartTime}`, type: NotificationType.SESSION_RESCHEDULED, accountId: session.tutorId });
+
+    if (user?.email) {
+      const subjectName = session.tutor?.tutorDetail?.[0]?.subject?.name || null;
+      await this.nodeMailerService.sendSessionRescheduleEmail(
+        user.email,
+        user.userDetail?.[0]?.name || 'Student',
+        tutorAccount?.tutorDetail?.[0]?.name || 'Tutor',
+        { date: oldDate as string, startTime: oldStartTime, endTime: oldEndTime },
+        { date: dto.newSessionDate, startTime: dto.newStartTime, endTime: dto.newEndTime },
+        'student',
+        subjectName,
+        process.env.APP_TIMEZONE || 'UTC',
+      );
+    }
+
+    return {
+      message: 'Session rescheduled successfully.',
+      tier,
+      feeCharged: feeAmount,
+      feePercent: tier === 'early' ? earlyFeePercent : tier === 'mid' ? midFeePercent : lateFeePercent,
+      rescheduleCount: session.rescheduleCount,
+      oldSchedule: { date: oldDate, startTime: oldStartTime, endTime: oldEndTime },
+      newSchedule: { date: dto.newSessionDate, startTime: dto.newStartTime, endTime: dto.newEndTime },
+      session: {
+        ...session,
+        user:  { id: user?.id,         name: user?.userDetail?.[0]?.name,         email: user?.email },
+        tutor: { id: tutorAccount?.id, name: tutorAccount?.tutorDetail?.[0]?.name, email: tutorAccount?.email },
+      },
+    };
+  }
+
+  // ─── Tutor Reschedule Session ─────────────────────────────────────────
+
+  async tutorRescheduleSession(sessionId: string, tutorId: string, dto: RescheduleSessionDto) {
+    const session = await this.sessionRepo.findOne({
+      where: { id: sessionId },
+      relations: ['user', 'tutor'],
+    });
+
+    if (!session) throw new NotFoundException('Session not found');
+    if (session.tutorId !== tutorId) throw new ForbiddenException('You are not allowed to reschedule this session');
+    if (session.status !== SessionStatus.SCHEDULED) throw new BadRequestException('Session cannot be rescheduled in its current status');
+
+    const rescheduleSettings = await this.settingsService.getRescheduleSettings();
+    const minNoticeHours = Number(rescheduleSettings?.tutor_reschedule_min_notice_hours) || 8;
+    const maxReschedules = Number(rescheduleSettings?.max_reschedules_per_session) || 3;
+
+    const hoursUntilSession = (new Date(`${session.sessionDate}T${session.startTime}`).getTime() - Date.now()) / (1000 * 60 * 60);
+
+    if (hoursUntilSession < minNoticeHours) {
+      throw new BadRequestException(`Rescheduling is not allowed within ${minNoticeHours} hours of the session`);
+    }
+
+    if ((session.rescheduleCount || 0) >= maxReschedules) {
+      throw new CustomException(MESSAGE_CODES.SESSION_RESCHEDULE_LIMIT_REACHED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
+    }
+
+    const oldDate      = session.sessionDate;
+    const oldStartTime = session.startTime;
+    const oldEndTime   = session.endTime;
+
+    session.sessionDate     = dto.newSessionDate;
+    session.startTime       = dto.newStartTime;
+    session.endTime         = dto.newEndTime;
+    session.duration        = this.calculateDuration(dto.newStartTime, dto.newEndTime);
+    session.rescheduleCount = (session.rescheduleCount || 0) + 1;
+    await this.sessionRepo.save(session);
+
+    const user = await this.accountRepo.findOne({ where: { id: session.userId }, relations: ['userDetail'] });
+    const tutorAccount = await this.accountRepo.findOne({ where: { id: session.tutorId }, relations: ['tutorDetail'] });
+    const tutorName = tutorAccount?.tutorDetail?.[0]?.name || 'Your tutor';
+    const timezone = process.env.APP_TIMEZONE || 'UTC';
+    const dashboardLink = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/dashboard` : 'https://wiznovy.com/dashboard';
+
+    // Notify student
+    await this.notificationsService.create({
+      title: 'Session Rescheduled by Tutor',
+      desc: `Your tutor rescheduled to ${dto.newSessionDate} at ${dto.newStartTime}.`,
+      type: NotificationType.SESSION_RESCHEDULED,
+      accountId: session.userId,
+    });
+
+    // Notify tutor
+    await this.notificationsService.create({
+      title: 'Session Rescheduled',
+      desc: `You rescheduled the session from ${oldDate} ${oldStartTime} to ${dto.newSessionDate} ${dto.newStartTime}`,
+      type: NotificationType.SESSION_RESCHEDULED,
+      accountId: session.tutorId,
+    });
+
+    // Email student
+    if (user?.email) {
+      const subjectName = session.tutor?.tutorDetail?.[0]?.subject?.name || null;
+      await this.nodeMailerService.sendSessionRescheduleEmail(
+        user.email,
+        user.userDetail?.[0]?.name || 'Student',
+        tutorName,
+        { date: oldDate as string, startTime: oldStartTime, endTime: oldEndTime },
+        { date: dto.newSessionDate, startTime: dto.newStartTime, endTime: dto.newEndTime },
+        'tutor',
+        subjectName,
+        process.env.APP_TIMEZONE || 'UTC',
+      );
+    }
+
+    return {
+      message: 'Session rescheduled successfully.',
+      rescheduleCount: session.rescheduleCount,
+      remainingReschedules: maxReschedules - session.rescheduleCount,
+      oldSchedule: { date: oldDate, startTime: oldStartTime, endTime: oldEndTime },
+      newSchedule: { date: dto.newSessionDate, startTime: dto.newStartTime, endTime: dto.newEndTime },
+      session: {
+        ...session,
+        user:  { id: user?.id,         name: user?.userDetail?.[0]?.name,         email: user?.email },
+        tutor: { id: tutorAccount?.id, name: tutorAccount?.tutorDetail?.[0]?.name, email: tutorAccount?.email },
+      },
+    };
+  }
+
+  // ─── Tutor Cancel Session ─────────────────────────────────────────────
+
+  async tutorCancelSession(sessionId: string, tutorId: string, reason?: string) {
+    const session = await this.sessionRepo.findOne({
+      where: { id: sessionId },
+      relations: ['user', 'tutor'],
+    });
+
+    if (!session) throw new NotFoundException('Session not found');
+    if (session.tutorId !== tutorId) throw new ForbiddenException('You are not allowed to cancel this session');
+    if (session.status !== SessionStatus.SCHEDULED) throw new BadRequestException('Session cannot be cancelled in its current status');
+
+    const hoursUntilSession = (new Date(`${session.sessionDate}T${session.startTime}`).getTime() - Date.now()) / (1000 * 60 * 60);
+
+    const cancelSettings = await this.settingsService.getCancellationSettings();
+    const minNoticeHours = Number(cancelSettings?.tutor_self_cancel_min_notice_hours) || 24;
+
+    if (hoursUntilSession < minNoticeHours) {
+      throw new BadRequestException(`Tutor must cancel at least ${minNoticeHours} hours before the session`);
+    }
+
+    // cancel session
+    session.status      = SessionStatus.CANCELLED;
+    session.cancelledAt = new Date();
+    session.cancelledBy = tutorId;
+    if (reason) session.notes = reason;
+    await this.sessionRepo.save(session);
+
+    // 100% refund to user wallet
+    const refundAmount = Number(session.amount);
+    await this.creditWallet(session.userId, refundAmount, `TUTOR_CANCEL_REFUND_${session.id}`);
+
+    // update purchase
+    if (session.purchaseId) {
+      const purchase = await this.purchaseRepo.findOne({ where: { id: session.purchaseId } });
+      if (purchase && purchase.paymentStatus === PaymentStatus.COMPLETED) {
+        purchase.paymentStatus = PaymentStatus.REFUNDED;
+        await this.purchaseRepo.save(purchase);
       }
+    }
+
+    const user = await this.accountRepo.findOne({ where: { id: session.userId }, relations: ['userDetail'] });
+    const tutorAccount = await this.accountRepo.findOne({ where: { id: session.tutorId }, relations: ['tutorDetail'] });
+
+    const reasonText = reason ? `: ${reason}` : '';
+    await this.notificationsService.create({ title: 'Session Cancelled by Tutor', desc: `Your session on ${session.sessionDate} at ${session.startTime} was cancelled by the tutor${reasonText}. Full refund credited to your wallet.`, type: 'SESSION_CANCELLED', accountId: session.userId });
+    await this.notificationsService.create({ title: 'Session Cancelled', desc: `You cancelled the session on ${session.sessionDate} at ${session.startTime}${reasonText}`, type: 'SESSION_CANCELLED', accountId: session.tutorId });
+
+    return {
+      message: 'Session cancelled successfully.',
+      refundAmount,
+      walletCredited: true,
+      reason: reason || null,
+      session: {
+        ...session,
+        user:  { id: user?.id,         name: user?.userDetail?.[0]?.name,         email: user?.email },
+        tutor: { id: tutorAccount?.id, name: tutorAccount?.tutorDetail?.[0]?.name, email: tutorAccount?.email },
+      },
     };
   }
 
@@ -563,46 +832,7 @@ export class SessionService {
     return conflictingSessions === 0;
   }
 
-  async getCancellationPolicy(sessionId: string, userId: string) {
-    const session = await this.sessionRepo.findOne({
-      where: { id: sessionId, userId }
-    });
 
-    if (!session) {
-      throw new NotFoundException('Session not found');
-    }
-
-    if (session.status !== SessionStatus.SCHEDULED) {
-      return {
-        canCancel: false,
-        reason: 'Only scheduled sessions can be cancelled'
-      };
-    }
-
-    const sessionDateTime = new Date(`${session.sessionDate}T${session.startTime}`);
-    const now = new Date();
-    const hoursUntilSession = (sessionDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-    if (hoursUntilSession < 2) {
-      return {
-        canCancel: false,
-        reason: 'Sessions cannot be cancelled less than 2 hours before start time'
-      };
-    }
-
-    const refundEligible = hoursUntilSession >= 24;
-    
-    return {
-      canCancel: true,
-      refundEligible,
-      hoursUntilSession: Math.floor(hoursUntilSession),
-      policy: {
-        minimumCancellationTime: '2 hours before session',
-        fullRefundTime: '24 hours before session',
-        noRefundTime: 'Less than 24 hours before session'
-      }
-    };
-  }
 
   async rescheduleSession(dto: RescheduleSessionDto, userId: string) {
     const session = await this.sessionRepo.findOne({
@@ -615,14 +845,15 @@ export class SessionService {
     }
 
     if (session.userId !== userId) {
-      throw new ConflictException('You can only reschedule your own sessions');
+      throw new ForbiddenException('You are not allowed to reschedule this session');
     }
 
     if (session.status !== SessionStatus.SCHEDULED) {
-      throw new BadRequestException('Only scheduled sessions can be rescheduled');
+      throw new BadRequestException('Session cannot be rescheduled in its current status');
+
+
     }
 
- 
     const availableSlots = await this.tutorAvailabilityService.getAvailableBookingSlots(
       session.tutorId, 
       dto.newSessionDate
@@ -633,17 +864,18 @@ export class SessionService {
     );
 
     if (!isSlotAvailable) {
-      throw new ConflictException('Selected time slot is not available in tutor\'s schedule');
+      throw new ConflictException('Selected time slot is not available');
     }
 
     const oldDate = session.sessionDate;
     const oldStartTime = session.startTime;
     const oldEndTime = session.endTime;
 
-    session.sessionDate = new Date(dto.newSessionDate);
+    session.sessionDate = dto.newSessionDate;
     session.startTime = dto.newStartTime;
     session.endTime = dto.newEndTime;
     session.duration = this.calculateDuration(dto.newStartTime, dto.newEndTime);
+    session.rescheduleCount = (session.rescheduleCount || 0) + 1;
     
     await this.sessionRepo.save(session);
 
@@ -663,7 +895,7 @@ export class SessionService {
         user.userDetail?.[0]?.name || 'Student',
         tutorAccount?.tutorDetail?.[0]?.name || 'Tutor',
         {
-          date: typeof oldDate === 'string' ? oldDate : oldDate.toISOString().split('T')[0],
+          date: oldDate as string,
           startTime: oldStartTime,
           endTime: oldEndTime
         },
@@ -710,98 +942,7 @@ export class SessionService {
     };
   }
 
-  async getReschedulePolicy(sessionId: string, userId: string) {
-    const session = await this.sessionRepo.findOne({
-      where: { id: sessionId, userId }
-    });
-
-    if (!session) {
-      throw new NotFoundException('Session not found');
-    }
-
-    if (session.status !== SessionStatus.SCHEDULED) {
-      return {
-        canReschedule: false,
-        reason: 'Only scheduled sessions can be rescheduled'
-      };
-    }
-
-    const sessionDateTime = new Date(`${session.sessionDate}T${session.startTime}`);
-    const now = new Date();
-    const hoursUntilSession = (sessionDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-    if (hoursUntilSession < 4) {
-      return {
-        canReschedule: false,
-        reason: 'Sessions cannot be rescheduled less than 4 hours before start time'
-      };
-    }
-
-    return {
-      canReschedule: true,
-      hoursUntilSession: Math.floor(hoursUntilSession),
-      policy: {
-        minimumRescheduleTime: '4 hours before session',
-        tutorId: session.tutorId
-      }
-    };
-  }
-
-
-
-  async getRescheduleSummary(dto: RescheduleSessionDto, userId: string) {
-    const session = await this.sessionRepo.findOne({
-      where: { id: dto.sessionId },
-      relations: ['tutor', 'tutor.tutorDetail']
-    });
-
-    if (!session) {
-      throw new NotFoundException('Session not found');
-    }
-
-    if (session.userId !== userId) {
-      throw new ConflictException('You can only reschedule your own sessions');
-    }
-
-   
-    const availableSlots = await this.tutorAvailabilityService.getAvailableBookingSlots(
-      session.tutorId, 
-      dto.newSessionDate
-    );
-
-    const isSlotAvailable = availableSlots.slots.some(slot => 
-      slot.start === dto.newStartTime && slot.end === dto.newEndTime
-    );
-
-    if (!isSlotAvailable) {
-      throw new ConflictException('Selected time slot is not available in tutor\'s schedule');
-    }
-
-    const newDuration = this.calculateDuration(dto.newStartTime, dto.newEndTime);
-    
-    return {
-      session: {
-        id: session.id,
-        tutorName: session.tutor?.tutorDetail?.[0]?.name || 'Unknown',
-        currentSchedule: {
-          date: session.sessionDate,
-          startTime: session.startTime,
-          endTime: session.endTime,
-          duration: session.duration
-        },
-        newSchedule: {
-          date: dto.newSessionDate,
-          startTime: dto.newStartTime,
-          endTime: dto.newEndTime,
-          duration: newDuration
-        }
-      },
-      slotAvailable: true,
-      message: 'Ready to reschedule. Please confirm to proceed.'
-    };
-  }
-
-  async getAvailableSlots(tutorId: string, date: string) {
+    async getAvailableSlots(tutorId: string, date: string) {
     return await this.tutorAvailabilityService.getAvailableBookingSlots(tutorId, date);
   }
 
@@ -847,9 +988,7 @@ export class SessionService {
 
     for (const session of sessions24h) {
       if (session.user?.email) {
-        const sessionDateStr = session.sessionDate instanceof Date 
-          ? session.sessionDate.toISOString().split('T')[0]
-          : String(session.sessionDate).split('T')[0];
+        const sessionDateStr = session.sessionDate as string;
           
         await this.nodeMailerService.sendSessionReminder(
           session.user.email,
@@ -873,9 +1012,7 @@ export class SessionService {
 
     for (const session of sessions1h) {
       if (session.user?.email) {
-        const sessionDateStr = session.sessionDate instanceof Date 
-          ? session.sessionDate.toISOString().split('T')[0]
-          : String(session.sessionDate).split('T')[0];
+        const sessionDateStr = session.sessionDate as string;
           
         await this.nodeMailerService.sendSessionReminder(
           session.user.email,
@@ -906,124 +1043,61 @@ export class SessionService {
 
   private calculateSessionPrice(hourlyRate: number, durationMinutes: number, sessionType: SessionType): number {
     const hourlyFraction = durationMinutes / 60;
-    return Math.round(hourlyRate * hourlyFraction * 100) / 100;
+    return Math.round(Number(hourlyRate) * hourlyFraction * 100) / 100;
   }
 
-  async confirmPayment(sessionId: string, userId: string, paymentData: any) {
-    const session = await this.sessionRepo.findOne({
-      where: { id: sessionId, userId },
-      relations: ['user', 'user.userDetail', 'tutor', 'tutor.tutorDetail']
-    });
-
-    if (!session) {
-      throw new BadRequestException('Session not found');
-    }
-
-    if (session.status !== SessionStatus.PENDING) {
-      throw new BadRequestException('Session is not in pending status');
-    }
-
-    const sessionDateStr = session.sessionDate instanceof Date 
-      ? session.sessionDate.toISOString().split('T')[0]
-      : String(session.sessionDate).split('T')[0];
-    const hasLock = await this.slotLockService.verifyUserLock(
-      session.tutorId, sessionDateStr, session.startTime, userId
-    );
-    
-    if (!hasLock) {
-      throw new ConflictException('Session lock has expired. Please try booking again.');
-    }
-
-    // Update session and create purchase record
-    await this.sessionRepo.manager.transaction(async manager => {
-      // Create UserPurchase record when payment is successful
-      const purchase = manager.create(UserPurchase, {
-        accountId: userId,
-        sessionId: session.id,
-        purchaseType: PurchaseType.SESSION,
-        amount: session.amount,
-        originalAmount: session.amount,
-        orderNumber: OrderNumberGenerator.generateOrderNumber(),
-        paymentStatus: PaymentStatus.COMPLETED,
-        transactionId: paymentData.paymentId || paymentData.transactionId,
-        paidAt: new Date()
-      });
-      const savedPurchase = await manager.save(purchase);
-
-      // Update session status and link to purchase
-      session.status = SessionStatus.SCHEDULED;
-      session.purchaseId = savedPurchase.id;
-      await manager.save(session);
-    });
-
-    // Release Redis lock
-    await this.slotLockService.releaseSlotLock(session.tutorId, sessionDateStr, session.startTime);
-
-    // Create Zoom meeting
-    try {
-      
-      await this.zoomService.createMeetingForSession({
-        id: session.id,
-        sessionDate: new Date(sessionDateStr),
-        startTime: session.startTime,
-        duration: session.duration,
-        tutor: { tutorDetail: [{ name: session.tutor?.tutorDetail?.[0]?.name }] }
-      } as any);
-    } catch (error) {
-      this.logger.error('Failed to create Zoom meeting:', error);
-    }
-
-    // Send notifications
-    await this.notificationsService.create({
-      title: 'Session Booked Successfully',
-      desc: `Your session on ${sessionDateStr} at ${session.startTime} has been confirmed`,
-      type: 'SESSION_BOOKED',
-      accountId: session.userId
-    });
-
-    await this.notificationsService.create({
-      title: 'New Session Booked',
-      desc: `You have a new session on ${sessionDateStr} at ${session.startTime}`,
-      type: 'SESSION_BOOKED',
-      accountId: session.tutorId
-    });
-
-    // Send confirmation emails
-    if (session.user?.email) {
-      await this.nodeMailerService.sendSessionBookingConfirmation({
-        email: session.user.email,
-        studentName: session.user.userDetail?.[0]?.name || 'Student',
-        tutorName: session.tutor?.tutorDetail?.[0]?.name || 'Tutor',
-        sessionDate: sessionDateStr,
-        startTime: session.startTime,
-        endTime: session.endTime
-      });
-    }
-
-    if (session.tutor?.email) {
-      await this.nodeMailerService.sendSessionBookingConfirmation({
-        email: session.tutor.email,
-        studentName: session.tutor.tutorDetail?.[0]?.name || 'Tutor',
-        tutorName: session.user?.userDetail?.[0]?.name || 'Student',
-        sessionDate: sessionDateStr,
-        startTime: session.startTime,
-        endTime: session.endTime
-      });
-    }
-
-    return {
-      message: 'Payment confirmed. Session successfully booked.',
-      session: {
-        id: session.id,
-        status: session.status,
-        sessionDate: session.sessionDate,
-        startTime: session.startTime,
-        endTime: session.endTime
-      }
-    };
-  }
+  
 
  
+
+  async findSessionsByAccountId(accountId: string, dto: SessionPaginationDto) {
+    const queryBuilder = this.sessionRepo.createQueryBuilder('session')
+      .leftJoin('session.user', 'user')
+      .leftJoin('user.userDetail', 'userDetail')
+      .leftJoin('session.tutor', 'tutor')
+      .leftJoin('tutor.tutorDetail', 'tutorDetail')
+      .leftJoin('session.zoomMeeting', 'zoomMeeting')
+      .select([
+        'session.id',
+        'session.sessionDate',
+        'session.startTime',
+        'session.endTime',
+        'session.duration',
+        'session.amount',
+        'session.status',
+        'session.sessionType',
+        'session.notes',
+        'session.createdAt',
+        'session.updatedAt',
+        'user.id', 'user.email',
+        'userDetail.name',
+        'tutor.id', 'tutor.email',
+        'tutorDetail.name', 'tutorDetail.profileImage',
+        'zoomMeeting.meetingId', 'zoomMeeting.joinUrl', 'zoomMeeting.startUrl',
+      ])
+      .where('session.userId = :accountId OR session.tutorId = :accountId', { accountId });
+
+    if (dto.status) {
+      queryBuilder.andWhere('session.status = :status', { status: dto.status });
+    }
+
+    if (dto.fromDate) {
+      queryBuilder.andWhere('session.sessionDate >= :fromDate', { fromDate: dto.fromDate });
+    }
+
+    if (dto.toDate) {
+      queryBuilder.andWhere('session.sessionDate <= :toDate', { toDate: dto.toDate });
+    }
+
+    const [result, total] = await queryBuilder
+      .orderBy('session.sessionDate', 'DESC')
+      .addOrderBy('session.startTime', 'DESC')
+      .skip(dto.offset)
+      .take(dto.limit)
+      .getManyAndCount();
+
+    return { result, total };
+  }
 
   async findAllSessions(dto: SessionPaginationDto) {
     const queryBuilder = this.sessionRepo.createQueryBuilder('session')
@@ -1036,21 +1110,18 @@ export class SessionService {
         'session',
         'user.id', 'user.email',
         'userDetail.name',
-        'tutor.id', 'tutor.email',
-        'tutorDetail.name', 'tutorDetail.profileImage',
+        'tutor.id',  'tutor.email',
+        'tutorDetail.name', 'tutorDetail.tutorId', 'tutorDetail.profileImage',
         'zoomMeeting.meetingId', 'zoomMeeting.joinUrl', 'zoomMeeting.startUrl'
       ]);
 
-    if (dto.date) {
-      queryBuilder.andWhere('DATE(session.sessionDate) = :date', { date: dto.date });
-    }
 
-    if (dto.fromDate) {
-      queryBuilder.andWhere('session.sessionDate >= :fromDate', { fromDate: dto.fromDate });
-    }
 
-    if (dto.toDate) {
-      queryBuilder.andWhere('session.sessionDate <= :toDate', { toDate: dto.toDate });
+      if (dto.keyword) {
+      queryBuilder.andWhere(
+        '(userDetail.name LIKE :keyword OR tutorDetail.name LIKE :keyword)',
+        { keyword: `%${dto.keyword}%` }
+      );
     }
 
     if (dto.status) {
@@ -1061,7 +1132,23 @@ export class SessionService {
       queryBuilder.andWhere('session.sessionType = :sessionType', { sessionType: dto.sessionType });
     }
 
-   
+    if (dto.date) {
+      queryBuilder.andWhere('DATE(session.sessionDate) = :date', { date: dto.date });
+    } else {
+      // date range presets
+      const now = new Date();
+      if (dto.fromDate && dto.toDate) {
+        queryBuilder.andWhere('session.sessionDate BETWEEN :fromDate AND :toDate', { fromDate: dto.fromDate, toDate: dto.toDate });
+      } else if (dto.fromDate) {
+        queryBuilder.andWhere('session.sessionDate >= :fromDate', { fromDate: dto.fromDate });
+      } else if (dto.toDate) {
+        queryBuilder.andWhere('session.sessionDate <= :toDate', { toDate: dto.toDate });
+      }
+    }
+
+    if (dto.accountId) {
+      queryBuilder.andWhere('(session.userId = :accountId OR session.tutorId = :accountId)', { accountId: dto.accountId });
+    }
 
     const [result, total] = await queryBuilder
       .orderBy('session.sessionDate', 'DESC')
@@ -1112,7 +1199,7 @@ export class SessionService {
     const oldStartTime = session.startTime;
     const oldEndTime = session.endTime;
 
-    session.sessionDate = new Date(dto.newSessionDate);
+    session.sessionDate = dto.newSessionDate;
     session.startTime = dto.newStartTime;
     session.endTime = dto.newEndTime;
     session.duration = this.calculateDuration(dto.newStartTime, dto.newEndTime);
@@ -1152,7 +1239,7 @@ export class SessionService {
     }
 
     if (session.status !== SessionStatus.SCHEDULED) {
-      throw new BadRequestException('Only scheduled sessions can be cancelled');
+      throw new BadRequestException('Session cannot be cancelled in its current status');
     }
 
     session.status = SessionStatus.CANCELLED;
@@ -1186,7 +1273,7 @@ export class SessionService {
         user.userDetail?.[0]?.name || 'Student',
         tutorAccount?.tutorDetail?.[0]?.name || 'Tutor',
         {
-          date: typeof session.sessionDate === 'string' ? session.sessionDate : session.sessionDate.toISOString().split('T')[0],
+          date: session.sessionDate as string,
           startTime: session.startTime,
           endTime: session.endTime
         },
@@ -1201,7 +1288,7 @@ export class SessionService {
         tutorAccount.tutorDetail?.[0]?.name || 'Tutor',
         user?.userDetail?.[0]?.name || 'Student',
         {
-          date: typeof session.sessionDate === 'string' ? session.sessionDate : session.sessionDate.toISOString().split('T')[0],
+          date: session.sessionDate as string,
           startTime: session.startTime,
           endTime: session.endTime
         },
@@ -1249,71 +1336,152 @@ await this.notificationsService.create({
   }
 
   async adminCreateSession(dto: CreateSessionDto) {
-    const tutor = await this.tutorRepo.findOne({
-      where: { accountId: dto.tutorId }
-    });
+    const tutor = await this.validateTutor(dto.tutorId);
 
-    if (!tutor) {
-      throw new NotFoundException('Tutor not found');
+    const user = await this.accountRepo.findOne({ where: { id: dto.userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const sessionSettings = await this.settingsService.getSessionSettings();
+    let duration: number;
+    let sessionPrice: number;
+
+    if (dto.sessionType === SessionType.TRIAL) {
+      duration = Number(sessionSettings?.trial_duration_minutes);
+      sessionPrice = Number(tutor.trailRate) || 0;
+    } else {
+      duration = Number(sessionSettings?.regular_session_duration_minutes);
+      sessionPrice = this.calculateSessionPrice(tutor.hourlyRate, duration, dto.sessionType);
     }
 
-    const user = await this.accountRepo.findOne({
-      where: { id: dto.userId }
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    let finalEndTime = dto.endTime;
-    
-    if (dto.sessionType === SessionType.TRIAL && dto.trialDuration) {
-      const startTimeParts = dto.startTime.split(':');
-      const startHour = Number.parseInt(startTimeParts[0]);
-      const startMinute = Number.parseInt(startTimeParts[1]);
-      
-      const endMinute = startMinute + dto.trialDuration;
-      const endHour = startHour + Math.floor(endMinute / 60);
-      const finalMinute = endMinute % 60;
-      
-      finalEndTime = `${endHour.toString().padStart(2, '0')}:${finalMinute.toString().padStart(2, '0')}`;
-    }
-
-    const duration = this.calculateDuration(dto.startTime, finalEndTime);
-    const sessionPrice = this.calculateSessionPrice(tutor.hourlyRate, duration, dto.sessionType);
+    const finalEndTime = this.calculateEndTime(dto.startTime, duration);
 
     const session = this.sessionRepo.create({
       userId: dto.userId,
       tutorId: dto.tutorId,
-      sessionDate: new Date(dto.sessionDate),
+      sessionDate: dto.sessionDate,
       startTime: dto.startTime,
       endTime: finalEndTime,
       duration,
       amount: sessionPrice,
-      notes: dto.notes || 'Manually created by admin for testing',
+      notes: dto.notes || 'Manually created by admin',
       sessionType: dto.sessionType,
-      status: SessionStatus.SCHEDULED
+      status: SessionStatus.SCHEDULED,
     });
-    
+
     const savedSession = await this.sessionRepo.save(session);
 
     await this.notificationsService.create({
       title: 'New Session Created',
       desc: `A session has been scheduled for ${dto.sessionDate} at ${dto.startTime}`,
       type: 'SESSION_BOOKED',
-      accountId: dto.userId
+      accountId: dto.userId,
     });
 
     await this.notificationsService.create({
       title: 'New Session Assigned',
       desc: `You have a new session on ${dto.sessionDate} at ${dto.startTime}`,
       type: 'SESSION_BOOKED',
-      accountId: dto.tutorId
+      accountId: dto.tutorId,
     });
 
-    return {
-      message: 'Session created successfully by admin',
-      session: savedSession
+    return { message: 'Session created successfully by admin', session: savedSession };
+  }
+
+  async exportSessionsCsv(dto: ExportStudentsCsvDto): Promise<{ csv: string; fileName: string }> {
+    const { startDate, endDate } = this.resolveDateRange(dto);
+    const COMMISSION_RATE = 0.25;
+
+    const qb = this.sessionRepo.createQueryBuilder('session')
+      .leftJoinAndSelect('session.user', 'user')
+      .leftJoinAndSelect('user.userDetail', 'userDetail')
+      .leftJoinAndSelect('session.tutor', 'tutor')
+      .leftJoinAndSelect('tutor.tutorDetail', 'tutorDetail')
+      .leftJoinAndSelect('tutorDetail.subject', 'subject');
+
+    if (startDate) qb.andWhere('session.createdAt >= :startDate', { startDate });
+    if (endDate)   qb.andWhere('session.createdAt <= :endDate',   { endDate });
+    qb.orderBy('session.createdAt', 'DESC');
+
+    const sessions = await qb.getMany();
+
+    const ud = (r: any) => Array.isArray(r.user?.userDetail) ? r.user.userDetail[0] : r.user?.userDetail;
+    const td = (r: any) => Array.isArray(r.tutor?.tutorDetail) ? r.tutor.tutorDetail[0] : r.tutor?.tutorDetail;
+
+    const formatTime = (time: string) => {
+      if (!time) return '';
+      const [h, m] = time.split(':').map(Number);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const hour = h % 12 || 12;
+      return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
     };
+
+    const cancelledByLabel = (r: any) => {
+      if (!r.cancelledBy) return '';
+      if (r.cancelledBy === r.userId)  return 'Student';
+      if (r.cancelledBy === r.tutorId) return 'Tutor';
+      return 'Admin';
+    };
+
+    const columns: CsvColumn[] = [
+      { header: 'Session ID',              value: r => r.id },
+      { header: 'Session Date',            value: r => r.sessionDate || '' },
+      { header: 'Session Time',            value: r => formatTime(r.startTime) },
+      { header: 'Duration (mins)',         value: r => r.duration ?? '' },
+      { header: 'Session Type',            value: r => r.sessionType === SessionType.TRIAL ? 'Trial' : 'Regular' },
+      { header: 'Status',                  value: r => r.status || '' },
+      { header: 'Student Name',            value: r => ud(r)?.name || '' },
+      { header: 'Student ID',              value: r => ud(r)?.userId || '' },
+      { header: 'Tutor Name',              value: r => td(r)?.name || '' },
+      { header: 'Tutor ID',                value: r => td(r)?.tutorId || '' },
+      { header: 'Subject',                 value: r => td(r)?.subject?.name || '' },
+      { header: 'Amount Paid (USD)',        value: r => r.amount ?? '' },
+      { header: 'Platform Commission',     value: r => r.amount ? (r.amount * COMMISSION_RATE).toFixed(2) : '' },
+      { header: 'Tutor Earnings',          value: r => r.amount ? (r.amount * (1 - COMMISSION_RATE)).toFixed(2) : '' },
+      { header: 'Cancellation Reason',     value: r => r.status === 'CANCELLED' ? (r.notes || '') : '' },
+      { header: 'Cancelled By',            value: r => r.status === 'CANCELLED' ? cancelledByLabel(r) : '' },
+      { header: 'Refund Amount',           value: r => '' },
+      { header: 'Booking Date',            value: r => formatCsvDate(r.createdAt) },
+    ];
+
+    const csv      = buildCsv(columns, sessions);
+    const fileName = generateCsvFileName('wiznovy-sessions-export');
+    return { csv, fileName };
+  }
+
+  private resolveDateRange(dto: ExportStudentsCsvDto): { startDate: Date | null; endDate: Date | null } {
+    const now   = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    switch (dto.preset) {
+      case DateRangePreset.THIS_WEEK: {
+        const start = new Date(today);
+        start.setDate(today.getDate() - today.getDay());
+        return { startDate: start, endDate: now };
+      }
+      case DateRangePreset.LAST_WEEK: {
+        const start = new Date(today);
+        start.setDate(today.getDate() - today.getDay() - 7);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+        return { startDate: start, endDate: end };
+      }
+      case DateRangePreset.LAST_MONTH: {
+        const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const end   = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        return { startDate: start, endDate: end };
+      }
+      case DateRangePreset.LAST_3_MONTHS: {
+        const start = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+        return { startDate: start, endDate: now };
+      }
+      case DateRangePreset.CUSTOM:
+        return {
+          startDate: dto.startDate ? new Date(dto.startDate) : null,
+          endDate:   dto.endDate   ? new Date(dto.endDate)   : null,
+        };
+      default:
+        return { startDate: null, endDate: null };
+    }
   }
 }
+

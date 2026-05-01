@@ -169,7 +169,7 @@ export class VideoLectureService {
         'videoLecture.createdAt',
         'unit.id',
         'unit.name',
-        'unit.courseId',
+      ,
      
       ])
       .where('videoLecture.id = :id', { id })

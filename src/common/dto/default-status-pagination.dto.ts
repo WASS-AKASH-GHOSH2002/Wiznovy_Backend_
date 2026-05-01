@@ -34,7 +34,7 @@ export class DefaultStatusPaginationDto {
   @MaxLength(100)
   keyword: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(DefaultStatus)
   status: DefaultStatus;
 }

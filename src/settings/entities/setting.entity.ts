@@ -40,6 +40,9 @@ export class Setting {
   @Column({ type: 'varchar', length: 100, nullable: true })
   companyName: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  companyYear:string;
+
   @Column({ type: 'varchar', length: 255, nullable: true })
   companyAddress: string;
 
@@ -64,8 +67,14 @@ export class Setting {
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0})
  sessionCommissionRate: number;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, default:0})
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0})
   courseCommissionRate: number;
+
+  @Column({ type: 'int', default: 10, nullable: true })
+  maxTopCourses: number;
+
+  @Column({ type: 'int', default: 10, nullable: true })
+  maxTopSubjects: number;
 
   @Column({ type: 'enum', enum: DefaultStatus, default: DefaultStatus.ACTIVE })
   status: DefaultStatus;
@@ -79,24 +88,25 @@ export class Setting {
   @Column({ type: 'varchar', length: 10, default: 'USD', nullable: true })
   currency: string;
 
-  @Column({ type: 'text', nullable: true })
-  zoomApiKey: string;
+   @Column({ type: 'varchar', length: 255, nullable: true })
+  stripe_secret_key: string;
 
-  @Column({ type: 'text', nullable: true })
-  zoomApiSecret: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  stripe_publishable_key: string;
 
-  @Column({ type: 'text', nullable: true })
-  stripePublicKey: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  stripe_webhook_secret: string;
 
-  @Column({ type: 'text', nullable: true })
-  stripeSecretKey: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  zoom_account_id: string;
 
-  @Column({ type: 'boolean', default: false })
-  zoomEnabled: boolean;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  zoom_client_id: string;
 
-  @Column({ type: 'boolean', default: false })
-  stripeEnabled: boolean;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  zoom_client_secret: string;
 
+  
   @Column({ type: 'text', nullable: true })
   emailHost: string;
 
@@ -112,6 +122,7 @@ export class Setting {
   @Column({ type: 'boolean', default: false })
   emailEnabled: boolean;
 
+ 
   @CreateDateColumn()
   createdAt: Date;
 

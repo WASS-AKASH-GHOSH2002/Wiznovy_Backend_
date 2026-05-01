@@ -1,18 +1,25 @@
-import { Controller, Post, Get, Body, Query, Param, UseGuards, Patch, Req } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, Param, UseGuards, Patch, Req, Res } from '@nestjs/common';
+import { Response } from 'express';
+import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SessionService } from './session.service';
-import { CreateSessionDto, SessionPaginationDto } from './dto/create-session.dto';
+import { CreateSessionDto, SessionPaginationDto, BookRegularSessionDto, BookTrialSessionDto } from './dto/create-session.dto';
 import { CancelSessionDto } from './dto/cancel-session.dto';
 import { AdminCancelSessionDto } from './dto/admin-cancel-session.dto';
 import { RescheduleSessionDto } from './dto/reschedule-session.dto';
-import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Account } from '../account/entities/account.entity';
-import { UserRole } from '../enum';
+import { PermissionAction, UserRole, } from '../enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CheckPermissions } from '../auth/decorators/permissions.decorator';
+import { AdminProtected } from '../admin-action-log/decorators/admin-protected.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
+import { SabbathGuard } from '../sabbath/sabbath.guard';
 import { Request } from 'express';
+import { ExportStudentsCsvDto } from '../account/dto/export-students-csv.dto';
+import { sendCsvResponse } from 'src/utils/csv.utils';
 
 @ApiTags('Sessions')
 @Controller('sessions')
@@ -20,24 +27,28 @@ import { Request } from 'express';
 export class SessionController {
   constructor(private readonly sessionService: SessionService) {}
 
-  @Post('book')
-  @UseGuards(RolesGuard)
+  
+
+  @Post('book/regular')
+  @UseGuards(RolesGuard, SabbathGuard)
   @Roles(UserRole.USER)
-  bookSession(@Body() dto: CreateSessionDto, @CurrentUser() user: Account) {
-    return this.sessionService.create(dto, user.id);
+  @ApiOperation({ summary: 'Book a regular session with a tutor' })
+  @ApiResponse({ status: 201, description: 'Regular session booked successfully' })
+  bookRegularSession(@Body() dto: BookRegularSessionDto, @CurrentUser() user: Account) {
+    return this.sessionService.bookRegularSession(dto, user.id);
   }
 
-  @Post('confirm-payment')
-  @UseGuards(RolesGuard)
+  @Post('book/trial')
+  @UseGuards(RolesGuard, SabbathGuard)
   @Roles(UserRole.USER)
-  @ApiOperation({ summary: 'Confirm payment and finalize session booking' })
-  @ApiResponse({ status: 200, description: 'Payment confirmed and session booked' })
-  @ApiResponse({ status: 400, description: 'Session not found or invalid status' })
-  @ApiResponse({ status: 409, description: 'Session lock expired' })
-  confirmPayment(@Body() dto: ConfirmPaymentDto, @CurrentUser() user: Account) {
-    return this.sessionService.confirmPayment(dto.sessionId, user.id, dto);
+  @ApiOperation({ summary: 'Book a trial session with a tutor (25 minutes, free)' })
+  @ApiResponse({ status: 201, description: 'Trial session booked successfully' })
+  @ApiResponse({ status: 409, description: 'Trial session already booked with this tutor' })
+  bookTrialSession(@Body() dto: BookTrialSessionDto, @CurrentUser() user: Account) {
+    return this.sessionService.bookTrialSession(dto, user.id);
   }
 
+ 
   @Get('my-sessions')
   @UseGuards(RolesGuard)
   @Roles(UserRole.USER)
@@ -70,6 +81,51 @@ export class SessionController {
     return this.sessionService.getPaymentHistory(user.id, dto);
   }
 
+  @Patch('user/reschedule/:id')
+  @ApiOperation({ summary: 'User: Reschedule a session (fee may apply based on timing)' })
+  @ApiResponse({ status: 200, description: 'Session rescheduled successfully' })
+  @ApiResponse({ status: 400, description: 'Blocked - too close, max reschedules reached, or insufficient wallet balance' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.USER)
+  userRescheduleSession(@Param('id') id: string, @Body() dto: RescheduleSessionDto, @CurrentUser() user: Account) {
+    return this.sessionService.userRescheduleSession(id, user.id, dto);
+  }
+
+  @Patch('tutor/reschedule/:id')
+  @ApiOperation({ summary: 'Tutor: Reschedule a session' })
+  @ApiResponse({ status: 200, description: 'Session rescheduled successfully' })
+  @ApiResponse({ status: 400, description: 'Reschedule not allowed - insufficient notice or max limit reached' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.TUTOR)
+  tutorRescheduleSession(@Param('id') id: string, @Body() dto: RescheduleSessionDto, @CurrentUser() user: Account) {
+    return this.sessionService.tutorRescheduleSession(id, user.id, dto);
+  }
+
+  @Patch('tutor/cancel/:id')
+  @ApiOperation({ summary: 'Tutor: Cancel a session by session ID' })
+  @ApiResponse({ status: 200, description: 'Session cancelled and full refund credited to user wallet' })
+  @ApiResponse({ status: 400, description: 'Cancellation not allowed - insufficient notice' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.TUTOR)
+  tutorCancelSession(@Param('id') id: string, @Body() dto: CancelSessionDto, @CurrentUser() user: Account) {
+    return this.sessionService.tutorCancelSession(id, user.id, dto.reason);
+  }
+
+  @Patch('user/cancel/:id')
+  @ApiOperation({ summary: 'User: Cancel a booked session by session ID' })
+  @ApiResponse({ status: 200, description: 'Session cancelled successfully' })
+  @ApiResponse({ status: 400, description: 'Session cannot be cancelled' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.USER)
+  cancelSessionById(@Param('id') id:string, @Body() dto:CancelSessionDto, @CurrentUser() user: Account) {
+    dto.sessionId = id;
+    return this.sessionService.cancelSession(dto, user.id);
+  }
+
   @Patch('cancel')
   @ApiOperation({ summary: 'Cancel a booked session' })
   @ApiResponse({ status: 200, description: 'Session cancelled successfully' })
@@ -92,87 +148,77 @@ export class SessionController {
 
 
 
-  @Get('cancellation-policy/:sessionId')
-  @ApiOperation({ summary: 'Get cancellation policy and eligibility for a specific session' })
-  @ApiResponse({ status: 200, description: 'Cancellation policy details' })
-  @ApiResponse({ status: 404, description: 'Session not found' })
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.USER)
-  getCancellationPolicy(@Param('sessionId') sessionId: string, @CurrentUser() user: Account) {
-    return this.sessionService.getCancellationPolicy(sessionId, user.id);
-  }
-
-  @Patch('reschedule')
-  @ApiOperation({ summary: 'Reschedule a booked session' })
-  @ApiResponse({ status: 200, description: 'Session rescheduled successfully' })
-  @ApiResponse({ status: 400, description: 'Session cannot be rescheduled (too late or invalid status)' })
-  @ApiResponse({ status: 404, description: 'Session not found' })
-  @ApiResponse({ status: 409, description: 'Selected time slot is already booked' })
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.USER)
-  rescheduleSession(@Body() dto: RescheduleSessionDto, @CurrentUser() user: Account) {
-    return this.sessionService.rescheduleSession(dto, user.id);
-  }
-
-  @Get('reschedule-policy/:sessionId')
-  @ApiOperation({ summary: 'Get reschedule policy and eligibility for a specific session' })
-  @ApiResponse({ status: 200, description: 'Reschedule policy details' })
-  @ApiResponse({ status: 404, description: 'Session not found' })
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.USER)
-  getReschedulePolicy(@Param('sessionId') sessionId: string, @CurrentUser() user: Account) {
-    return this.sessionService.getReschedulePolicy(sessionId, user.id);
-  }
+  // @Patch('reschedule')
+  // @ApiOperation({ summary: 'Reschedule a booked session' })
+  // @ApiResponse({ status: 200, description: 'Session rescheduled successfully' })
+  // @ApiResponse({ status: 400, description: 'Session cannot be rescheduled (too late or invalid status)' })
+  // @ApiResponse({ status: 404, description: 'Session not found' })
+  // @ApiResponse({ status: 409, description: 'Selected time slot is already booked' })
+  // @UseGuards(RolesGuard)
+  // @Roles(UserRole.USER)
+  // rescheduleSession(@Body() dto: RescheduleSessionDto, @CurrentUser() user: Account) {
+  //   return this.sessionService.rescheduleSession(dto, user.id);
+  // }
 
  
+ 
 
-  @Post('reschedule-summary')
-  @ApiOperation({ summary: 'Get reschedule summary before confirmation' })
-  @ApiResponse({ status: 200, description: 'Reschedule summary details' })
-  @ApiResponse({ status: 404, description: 'Session not found' })
-  @ApiResponse({ status: 409, description: 'Selected time slot is already booked' })
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.USER)
-  getRescheduleSummary(@Body() dto: RescheduleSessionDto, @CurrentUser() user: Account) {
-    return this.sessionService.getRescheduleSummary(dto, user.id);
-  }
+
 
   @Post('send-reminders')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.CREATE, 'session'])
   @ApiOperation({ summary: 'Send reminder emails for upcoming sessions (Admin only)' })
   @ApiResponse({ status: 200, description: 'Reminders sent successfully' })
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF)
   sendSessionReminders() {
     return this.sessionService.sendSessionReminders();
   }
 
-  @Get('admin/all')
-  @UseGuards(RolesGuard)
+  @Get('account/:accountId')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'session'])
+  @ApiOperation({ summary: 'Get all sessions by account ID' })
+  @ApiResponse({ status: 200, description: 'Returns all sessions for the account' })
+  findSessionsByAccountId(@Param('accountId') accountId: string, @Query() dto: SessionPaginationDto) {
+    return this.sessionService.findSessionsByAccountId(accountId, dto);
+  }
+
+  @Get('admin/all')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'session'])
   @ApiOperation({ summary: 'Admin: View all sessions with filters' })
   findAllSessions(@Query() dto: SessionPaginationDto) {
     return this.sessionService.findAllSessions(dto);
   }
 
   @Get('admin/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'session'])
   @ApiOperation({ summary: 'Admin: Get session details by ID' })
   adminFindOne(@Param('id') id: string) {
     return this.sessionService.adminFindOne(id);
   }
 
   @Patch('admin/reschedule/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'session'])
   @ApiOperation({ summary: 'Admin: Reschedule any session' })
   adminRescheduleSession(@Param('id') id: string, @Body() dto: RescheduleSessionDto) {
     return this.sessionService.adminRescheduleSession(id, dto);
   }
 
   @Patch('admin/cancel/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'session'])
   @ApiOperation({ summary: 'Admin: Cancel any session' })
   adminCancelSession(@Param('id') id: string, @Body() dto: AdminCancelSessionDto, @CurrentUser() admin: Account, @Req() req: Request) {
     const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || req.socket.remoteAddress;
@@ -181,10 +227,23 @@ export class SessionController {
   }
 
   @Post('admin/create')
-  @UseGuards(RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.CREATE, 'session'])
   @ApiOperation({ summary: 'Admin: Manually create session for testing' })
   adminCreateSession(@Body() dto: CreateSessionDto) {
     return this.sessionService.adminCreateSession(dto);
+  }
+
+  @Get('admin/export/csv')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'session'])
+  @ApiOperation({ summary: 'Admin: Export sessions to CSV with date range filter' })
+  async exportSessionsCsv(@Query() dto: ExportStudentsCsvDto, @Res() res: Response) {
+    const { csv, fileName } = await this.sessionService.exportSessionsCsv(dto);
+    sendCsvResponse(res, csv, fileName);
   }
 }

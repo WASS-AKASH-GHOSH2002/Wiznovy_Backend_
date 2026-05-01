@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { CreateBudgetDto, UpdateBudgetDto, BudgetStatusDto, BudgetPaginationDto } from './dto/create-budget.dto';
+import { CreateBudgetDto, UpdateBudgetDto, BudgetStatusDto, BulkBudgetStatusDto, BudgetPaginationDto } from './dto/create-budget.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Brackets, Not } from 'typeorm';
 import { Budget } from './entities/budget.entity';
@@ -99,6 +99,11 @@ export class BudgetService {
     const result = await this.findOne(id);
     const obj = Object.assign(result, dto);
     return this.repo.save(obj);
+  }
+
+  async bulkUpdateStatus(dto: BulkBudgetStatusDto) {
+    const result = await this.repo.update(dto.ids, { status: dto.status });
+    return { updated: result.affected };
   }
 
   async remove(id: string) {

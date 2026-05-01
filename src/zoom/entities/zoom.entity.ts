@@ -33,6 +33,9 @@ export class ZoomMeeting {
   @Column({ type: 'varchar', length: 50, default: 'waiting' })
   status: string;
 
+  @Column({ type: 'boolean', default: false })
+  reminderSent: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

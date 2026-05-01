@@ -1,7 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsDateString,
   IsEmail,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -11,6 +13,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { ContactUsStatus, ContactUsType } from 'src/enum';
 
 export class CreateContactUsDto {
   @ApiPropertyOptional({ description: 'Category ID ' })
@@ -49,8 +52,20 @@ export class CreateContactUsDto {
   @MinLength(5)
   @MaxLength(500)
   message: string;
+
+  // @ApiPropertyOptional({ enum: ContactUsType, description: 'Type of contact us' })
+  // @IsNotEmpty()
+  // @IsEnum(ContactUsType)
+  // type: ContactUsType;
 }
 
+
+export class ContactUsStatusDto {
+  @ApiProperty({ enum: ContactUsStatus, example: ContactUsStatus.REPLIED })
+  @IsNotEmpty()
+  @IsEnum(ContactUsStatus)
+  status: ContactUsStatus;
+}
 
 export class ContactUsPaginationDto {
   @IsNotEmpty()
@@ -78,4 +93,24 @@ export class ContactUsPaginationDto {
   @IsOptional()
   @IsString()
   categoryId: string;
+
+  @ApiPropertyOptional({ enum: ContactUsType, description: 'Type to filter' })
+  @IsOptional()
+  @IsEnum(ContactUsType)
+  type: ContactUsType;
+
+  @ApiPropertyOptional({ enum: ContactUsStatus, description: 'Status to filter' })
+  @IsOptional()
+  @IsEnum(ContactUsStatus)
+  status: ContactUsStatus;
+
+  @ApiPropertyOptional({ description: 'Start date (YYYY-MM-DD)' })
+  @IsOptional()
+  @IsDateString()
+  startDate: string;
+
+  @ApiPropertyOptional({ description: 'End date (YYYY-MM-DD)' })
+  @IsOptional()
+  @IsDateString()
+  endDate: string;
 }

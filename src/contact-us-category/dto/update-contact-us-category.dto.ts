@@ -1,6 +1,7 @@
 import { IsOptional, IsEnum, IsString, MaxLength } from 'class-validator';
-import { DefaultStatus } from 'src/enum';
+import { ContactUsType, DefaultStatus } from 'src/enum';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { apiFeatures } from 'src/utils/apiFeatures.utils';
 
 export class UpdateContactUsCategoryDto {
   @ApiPropertyOptional({ example: 'Customer Support', maxLength: 255 })
@@ -13,4 +14,9 @@ export class UpdateContactUsCategoryDto {
   @IsOptional()
   @IsEnum(DefaultStatus)
   status: DefaultStatus;
+
+  @ApiPropertyOptional({example:''})
+  @IsOptional()
+  @IsEnum(ContactUsType)
+   type:ContactUsType;
 }

@@ -1,7 +1,7 @@
 import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CommonPaginationDto } from 'src/common/dto/common-pagination.dto';
-import { RatingStatus } from 'src/enum';
+import { RatingStatus, RatingType } from 'src/enum';
 
 export class CreateRatingDto {
   @IsNotEmpty()
@@ -14,6 +14,10 @@ export class CreateRatingDto {
   @IsOptional()
   @IsString()
   comment: string;
+
+  @IsOptional()
+  @IsEnum(RatingType)
+  type: RatingType;
 
   @IsOptional()
   @IsString()
@@ -56,11 +60,28 @@ export class UpdateRatingStatusDto {
 }
 
 export class RatingFilterDto extends CommonPaginationDto {
- 
-
   @IsOptional()
   @IsString()
   accountId: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  rating: number;
+
+  @IsOptional()
+  @IsEnum(RatingType)
+  type: RatingType;
+
+  @IsOptional()
+  @IsString()
+  fromDate: string;
+
+  @IsOptional()
+  @IsString()
+  toDate: string;
 }
 
 export class TutorFeedbackFilterDto extends CommonPaginationDto {

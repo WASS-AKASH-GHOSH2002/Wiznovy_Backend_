@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AdminCancelSessionDto {
@@ -6,7 +6,7 @@ export class AdminCancelSessionDto {
     description: 'Reason for cancellation',
     example: 'Policy violation'
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
   reason?: string;
 }

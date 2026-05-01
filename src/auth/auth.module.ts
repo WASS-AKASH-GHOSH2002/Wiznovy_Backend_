@@ -17,6 +17,8 @@ import { LoginHistoryModule } from 'src/login-history/login-history.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
 import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
 import { Wallet } from 'src/wallet/entities/wallet.entity';
+import { StaffDetail } from 'src/staff-details/entities/staff-detail.entity';
+
 
 @Module({
   imports: [
@@ -25,9 +27,11 @@ import { Wallet } from 'src/wallet/entities/wallet.entity';
       UserPermission,
       UserDetail,
       TutorDetail,
-      Wallet
+      Wallet,
+      StaffDetail,
+    
     ]),
-    LoginHistoryModule,
+    forwardRef(() => LoginHistoryModule),
     NodeMailerModule,
     forwardRef(() => NotificationsModule),
     PassportModule.register({ defaultStrategy: 'jwt' }),

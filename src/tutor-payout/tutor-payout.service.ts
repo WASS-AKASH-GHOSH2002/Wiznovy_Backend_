@@ -1,4 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, HttpStatus } from '@nestjs/common';
+import { CustomException } from 'src/shared/exceptions/custom.exception';
+import { MESSAGE_CODES } from 'src/shared/constants/message-codes';
+import { MessageType } from 'src/shared/constants/message-type.enum';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Brackets } from 'typeorm';
 import { TutorPayout } from './entities/tutor-payout.entity';
@@ -8,7 +11,8 @@ import { NotificationsService } from 'src/notifications/notifications.service';
 import { Account } from 'src/account/entities/account.entity';
 import { BankDetail } from 'src/bank-details/entities/bank-detail.entity';
 import { Wallet } from 'src/wallet/entities/wallet.entity';
-import { PayoutStatus } from 'src/enum';
+import { WalletTransaction } from 'src/wallet-transaction/entities/wallet-transaction.entity';
+import { PayoutStatus, ApprovePaymentMethod, TransactionType, TransactionStatus } from 'src/enum';
 
 @Injectable()
 export class TutorPayoutService {
@@ -21,6 +25,8 @@ export class TutorPayoutService {
     private readonly bankDetailRepo: Repository<BankDetail>,
     @InjectRepository(Wallet)
     private readonly walletRepo: Repository<Wallet>,
+    @InjectRepository(WalletTransaction)
+    private readonly walletTxRepo: Repository<WalletTransaction>,
     private readonly nodeMailerService: NodeMailerService,
     private readonly notificationsService: NotificationsService,
   ) {}
@@ -32,7 +38,7 @@ export class TutorPayoutService {
     });
 
     if (pendingPayout) {
-      throw new BadRequestException('You already have a pending payout request');
+      throw new CustomException(MESSAGE_CODES.PAYOUT_REQUEST_PENDING, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
 
     
@@ -46,7 +52,7 @@ export class TutorPayoutService {
 
     const walletBalance = wallet.balance || 0;
     if (dto.amount > walletBalance) {
-      throw new BadRequestException(`Insufficient wallet balance. Available: $${walletBalance}`);
+      throw new CustomException(MESSAGE_CODES.PAYOUT_INSUFFICIENT_BALANCE, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
 
     if (dto.amount < 10) {
@@ -59,12 +65,11 @@ export class TutorPayoutService {
     });
 
     if (!bankDetails) {
-      throw new BadRequestException('Please add your bank details before requesting payout');
+      throw new CustomException(MESSAGE_CODES.PAYOUT_BANK_DETAILS_REQUIRED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
 
- 
     if (!bankDetails.accountNo || !bankDetails.accountHolderName || !bankDetails.ifscCode || !bankDetails.bankName) {
-      throw new BadRequestException('Please complete all required bank details (Account Number, Holder Name, IFSC Code, Bank Name)');
+      throw new CustomException(MESSAGE_CODES.PAYOUT_BANK_DETAILS_REQUIRED, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
 
  
@@ -90,7 +95,12 @@ export class TutorPayoutService {
       accountId: tutorId
     });
 
-   
+    const tutor = await this.accountRepo.findOne({ where: { id: tutorId }, relations: ['tutorDetail'] });
+    if (tutor?.email) {
+      const tutorName = tutor.tutorDetail?.[0]?.name || 'Tutor';
+      this.nodeMailerService.sendPayoutRequestEmail(tutor.email, tutorName, dto.amount)
+        .catch(err => console.error('Payout request email failed:', err));
+    }
 
     return { message: 'Payout request created successfully', payout: savedPayout };
   }
@@ -117,8 +127,8 @@ export class TutorPayoutService {
         'tutor.email',
         'tutorDetail.name',
         'tutorDetail.profileImage',
+        'tutorDetail.tutorId',
         'approver.id',
-        'staffDetail.name',
         'bankDetail.accountNo',
         'bankDetail.accountHolderName',
         'bankDetail.ifscCode',
@@ -190,6 +200,7 @@ export class TutorPayoutService {
         'tutor.email',
         'tutorDetail.name',
         'tutorDetail.profileImage',
+        'tutorDetail.tutorId',
         'approver.id',
         'approver.email',
         'bankDetail.accountNo',
@@ -236,15 +247,27 @@ export class TutorPayoutService {
     }
 
     if (Number(wallet.balance) < Number(payout.amount)) {
-      throw new BadRequestException(`Insufficient wallet balance. Available: $${wallet.balance}, Requested: $${payout.amount}`);
+      throw new CustomException(MESSAGE_CODES.PAYOUT_INSUFFICIENT_BALANCE, MessageType.ERROR, HttpStatus.BAD_REQUEST);
     }
 
     
-    wallet.balance = Number(wallet.balance) - Number(payout.amount);
+    const balanceBefore = Number(wallet.balance);
+    wallet.balance = balanceBefore - Number(payout.amount);
     wallet.totalWithdrawals = Number(wallet.totalWithdrawals || 0) + Number(payout.amount);
     await this.walletRepo.save(wallet);
 
-    payout.status = dto.status ;
+    await this.walletTxRepo.save(this.walletTxRepo.create({
+      walletId: wallet.id,
+      accountId: payout.tutorId,
+      amount: payout.amount,
+      type: TransactionType.DEBIT,
+      status: TransactionStatus.COMPLETED,
+      balanceBefore,
+      balanceAfter: wallet.balance,
+      paymentIntentId: dto.transactionId || null,
+    }));
+
+    payout.status = PayoutStatus.APPROVED;
     payout.approvedBy = approvedBy;
     payout.approvedAt = new Date();
     payout.paidAt = dto.paidAt ? new Date(dto.paidAt + 'Z') : new Date();
@@ -263,13 +286,7 @@ export class TutorPayoutService {
 
     await this.payoutRepo.save(payout);
 
-    await this.notificationsService.create({
-      title: 'Payout Approved',
-      desc: `Your payout request for $${payout.amount} has been approved and processed`,
-      type: 'PAYOUT_APPROVED',
-      accountId: payout.tutorId
-    });
-
+    await this.notificationsService.notifyPayoutApproved(payout.tutorId, payout.amount);
     if (payout.tutor?.email) {
       const tutorName = payout.tutor.tutorDetail?.[0]?.name || 'Tutor';
       this.nodeMailerService.sendPayoutStatusEmail(
@@ -304,13 +321,7 @@ export class TutorPayoutService {
     payout.approvedAt = new Date();
 
     await this.payoutRepo.save(payout);
-
-    await this.notificationsService.create({
-      title: 'Payout Rejected',
-      desc: `Your payout request for $${payout.amount} has been rejected. Reason: ${dto.rejectionReason}`,
-      type: 'PAYOUT_REJECTED',
-      accountId: payout.tutorId
-    });
+    await this.notificationsService.notifyPayoutRejected(payout.tutorId, payout.amount, dto.rejectionReason);
 
     if (payout.tutor?.email) {
       const tutorName = payout.tutor.tutorDetail?.[0]?.name || 'Tutor';

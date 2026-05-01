@@ -27,6 +27,47 @@ export class UserPermissionsService {
     return this.repo.save(dto);
   }
 
+  async getAllPermissionsByAccount(accountId: string) {
+    const result = await this.repo
+      .createQueryBuilder('userPermission')
+      .leftJoinAndSelect('userPermission.permission', 'permission')
+      .leftJoinAndSelect('userPermission.menu', 'menu')
+      .where('userPermission.accountId = :accountId', { accountId })
+      .select([
+        'userPermission.id',
+        'userPermission.status',
+        'userPermission.menuId',
+        'userPermission.permissionId',
+        'permission.id',
+        'permission.name',
+        'menu.id',
+        'menu.name',
+        'menu.title',
+      ])
+      .getMany();
+
+    const grouped = result.reduce((acc, item) => {
+      const menuId = item.menuId;
+      if (!acc[menuId]) {
+        acc[menuId] = {
+          menuId: item.menu?.['id'],
+          menuName: item.menu?.['name'],
+          menuTitle: item.menu?.['title'],
+          permissions: []
+        };
+      }
+      acc[menuId].permissions.push({
+        id: item.id,
+        permissionId: item.permissionId,
+        permissionName: item.permission?.['name'],
+        status: item.status
+      });
+      return acc;
+    }, {});
+
+    return { result: Object.values(grouped) };
+  }
+
   async getPermission(menuId: string, accountId: string) {
     const result = await this.repo
       .createQueryBuilder('userPermssion')
@@ -41,8 +82,10 @@ export class UserPermissionsService {
 
   async update(dto: UpdateUserPermissionDto[]) {
     try {
-      this.delPermissions(dto[0].accountId);
-      return this.repo.save(dto);
+      const result = await this.repo.save(dto);
+      const accountIds = [...new Set(dto.map((p) => p.accountId).filter(Boolean))];
+      await Promise.all(accountIds.map((id) => this.cacheManager.del('userPermission' + id)));
+      return result;
     } catch (error) {
       console.error('Error updating user permissions:', error);
       throw new NotAcceptableException(
@@ -51,17 +94,14 @@ export class UserPermissionsService {
     }
   }
 
-  private delPermissions(id: string) {
-    this.cacheManager.del('userPermission' + id);
-  }
-
   async status(id: number, dto: BoolStatusDto) {
-    
     const permission = await this.repo.findOne({ where: { id } });
     if (!permission) {
       throw new NotFoundException('User-Permission not found!');
     }
     const obj = Object.assign(permission, dto);
-    return this.repo.save(obj);
+    const result = await this.repo.save(obj);
+    await this.cacheManager.del('userPermission' + permission.accountId);
+    return result;
   }
 }

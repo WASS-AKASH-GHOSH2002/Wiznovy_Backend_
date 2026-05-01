@@ -7,6 +7,7 @@ import {
   MaxLength,
   MinLength,
   IsEnum,
+  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole } from 'src/enum';
@@ -70,6 +71,11 @@ export class UserLoginDto {
   @IsOptional()
   @IsString()
   ip: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  userAgent: string;
 }
 
 export class GoogleLoginDto {
@@ -97,8 +103,12 @@ export class UserRegisterDto {
   @IsNotEmpty()
   phoneNumber: string;
 
-  @ApiProperty({ example: 'password123' })
-  @IsNotEmpty()
+  @ApiProperty({ example: 'Password@123' })
+  @IsNotEmpty({ message: 'Please enter your password' })
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s])/, {
+    message: 'Must include uppercase, lowercase, number, and special character',
+  })
   password: string;
 
   @ApiProperty({ example: 'John Doe' })
@@ -120,12 +130,16 @@ export class ForgotPassDto {
   @MaxLength(50)
   email: string;
 
-   @ApiProperty({ enum: UserRole, example: UserRole.TUTOR })
+  @ApiProperty({ enum: UserRole, example: UserRole.TUTOR })
   @IsEnum(UserRole)
   role: UserRole;
 
-  @ApiPropertyOptional({ example: 'newpassword123' })
+  @ApiPropertyOptional({ example: 'Password@123' })
   @IsOptional()
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s])/, {
+    message: 'Must include uppercase, lowercase, number, and special character',
+  })
   newPassword: string;
 }
 

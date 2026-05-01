@@ -5,14 +5,17 @@ import { Course } from './entities/course.entity';
 import { Account } from '../account/entities/account.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AdminActionLogService } from '../admin-action-log/admin-action-log.service';
+import { SettingsService } from '../settings/settings.service';
 
 import { CreateCourseDto, UpdateCourseDto, CoursePaginationDto } from './dto/create-course.dto';
-import { DefaultStatus, UserRole, NotificationType, AccessTypes, PurchaseType, PaymentStatus, CourseStatus, AdminActionType, AdminActionTargetType } from '../enum';
+import { DefaultStatus, UserRole, NotificationType, AccessTypes,  PaymentStatus, CourseStatus, } from '../enum';
 import { join } from 'node:path';
 import { promises as fs } from 'node:fs';
 import { CourseStatusDto } from './dto/course-status.dto';
 import { UserPurchase } from 'src/user-purchase/entities/user-purchase.entity';
 import { TutorDetail } from '../tutor-details/entities/tutor-detail.entity';
+
+import { NodeMailerService } from '../node-mailer/node-mailer.service';
 
 @Injectable()
 export class CourseService {
@@ -27,6 +30,8 @@ export class CourseService {
     private readonly tutorRepo: Repository<TutorDetail>,
     private readonly notificationsService: NotificationsService,
     private readonly adminActionLogService: AdminActionLogService,
+    private readonly nodeMailerService: NodeMailerService,
+    private readonly settingsService: SettingsService,
   ) { }
 
   async create(dto: CreateCourseDto, currentUserId: string, files?: { image?: Express.Multer.File[], thumbnail?: Express.Multer.File[] }) {
@@ -55,20 +60,19 @@ export class CourseService {
     const { tutorId, ...courseData } = dto;
     const courseObj: any = Object.assign(courseData, { tutorId: tutorAccountId });
     
-    if (files?.image?.[0]) {
-      courseObj.imageUrl = process.env.WIZNOVY_CDN_LINK + files.image[0].path;
-      courseObj.imagepath = files.image[0].path;
-    }
-    
     if (files?.thumbnail?.[0]) {
       courseObj.thumbnailUrl = process.env.WIZNOVY_CDN_LINK + files.thumbnail[0].path;
       courseObj.thumbnailpath = files.thumbnail[0].path;
     }
     
     const course = await this.repo.save(courseObj);
-    
+
     await this.notifyAllUsers(course);
-    
+
+    if (currentUser.roles === UserRole.TUTOR) {
+      await this.notificationsService.notifyCourseSubmittedForReview(tutorAccountId, course.name);
+    }
+
     return course;
   }
 
@@ -97,7 +101,6 @@ export class CourseService {
         'course.id',
         'course.name',
         'course.description',
-        'course.imageUrl',
         'course.thumbnailUrl',
         'course.price',
         'course.discountPrice',
@@ -108,6 +111,7 @@ export class CourseService {
         'course.totalLectures',
         'course.averageRating',
         'course.totalRatings',
+        'course.topCourse',
         'course.tutorId',
         'course.authorMessage',
         'course.startDate',
@@ -142,6 +146,10 @@ export class CourseService {
       queryBuilder.andWhere('course.tutorId = :tutorId', { tutorId: dto.tutorId });
     }
 
+    if (dto.topCourse !== undefined) {
+      queryBuilder.andWhere('course.topCourse = :topCourse', { topCourse: dto.topCourse });
+    }
+
     if (dto.keyword) {
       queryBuilder.andWhere('course.name LIKE :keyword OR course.description LIKE :keyword', {
         keyword: `%${dto.keyword}%`
@@ -168,7 +176,6 @@ export class CourseService {
         'course.id',
         'course.name',
         'course.description',
-        'course.imageUrl',
         'course.thumbnailUrl',
         'course.price',
         'course.discountPrice',
@@ -219,6 +226,8 @@ export class CourseService {
     const queryBuilder = this.buildUserCourseQuery(dto);
     const [result, total] = await queryBuilder
       .orderBy('course.createdAt', 'DESC')
+      .skip(dto.offset)
+      .take(dto.limit)
       .getManyAndCount();
 
     await this.setAccessPermissions(result, accountId);
@@ -232,7 +241,7 @@ export class CourseService {
       .leftJoinAndSelect('course.subject', 'subject')
       .leftJoinAndSelect('course.language', 'language')
       .select([
-        'course.id', 'course.name', 'course.description', 'course.imageUrl',
+        'course.id', 'course.name', 'course.description',
         'course.thumbnailUrl', 'course.price', 'course.discountPrice', 'course.accessType',
         'course.totalDuration', 'course.totalLectures', 'course.validityDays',
         'course.averageRating', 'course.totalRatings', 'course.tutorId',
@@ -269,26 +278,28 @@ export class CourseService {
 
   private async setAccessPermissions(courses: any[], accountId?: string) {
     for (const course of courses) {
-      course['hasAccess'] = await this.checkCourseAccess(course, accountId);
+      const { hasAccess, isPurchased } = await this.checkCourseAccess(course, accountId);
+      course['hasAccess'] = hasAccess;
+      course['isPurchased'] = isPurchased;
     }
   }
 
-  private async checkCourseAccess(course: any, accountId?: string): Promise<boolean> {
-    if (course.accessType === AccessTypes.FREE) {
-      return true;
-    }
+  private async checkCourseAccess(course: any, accountId?: string): Promise<{ hasAccess: boolean; isPurchased: boolean }> {
     if (!accountId) {
-      return false;
+      return { hasAccess: course.accessType === AccessTypes.FREE, isPurchased: false };
     }
     const purchase = await this.userPurchaseRepo.findOne({
       where: {
         accountId,
         courseId: course.id,
-        purchaseType: PurchaseType.COURSE,
         paymentStatus: PaymentStatus.COMPLETED
       }
     });
-    return purchase && (!purchase.expiresAt || new Date() <= purchase.expiresAt);
+    const isPurchased = !!purchase;
+    const hasAccess =
+      course.accessType === AccessTypes.FREE ||
+      (isPurchased && (!purchase.expiresAt || new Date() <= purchase.expiresAt));
+    return { hasAccess, isPurchased };
   }
  
   async findOne(id: string) {
@@ -301,7 +312,6 @@ export class CourseService {
         'course.id',
         'course.name',
         'course.description',
-        'course.imageUrl',
         'course.thumbnailUrl',
         'course.price',
         'course.discountPrice',
@@ -340,22 +350,6 @@ export class CourseService {
     return result;
   }
 
-async image(img: string, result: Course) {
-  if (result.imagepath) {
-    const oldPath = join(__dirname, '..', '..', result.imagepath);
-    try {
-      await fs.unlink(oldPath);
-    } catch (err) {
-      console.warn(`Failed to delete old image: ${oldPath}`, err.message);
-    }
-  }
-
-  result.imageUrl = process.env.WIZNOVY_CDN_LINK + img;
-  result.imagepath = img;
-
-  return this.repo.save(result);
-}
-
 async thumbnail(img: string, result: Course) {
   if (result.thumbnailpath) {
     const oldPath = join(__dirname, '..', '..', result.thumbnailpath);
@@ -388,17 +382,65 @@ async thumbnail(img: string, result: Course) {
 
     const courseObj: any = Object.assign(result, dto);
     
-    if (files?.image?.[0]) {
-      courseObj.imageUrl = process.env.WIZNOVY_CDN_LINK + files.image[0].path;
-      courseObj.imagepath = files.image[0].path;
-    }
-    
     if (files?.thumbnail?.[0]) {
       courseObj.thumbnailUrl = process.env.WIZNOVY_CDN_LINK + files.thumbnail[0].path;
       courseObj.thumbnailpath = files.thumbnail[0].path;
     }
 
     return this.repo.save(courseObj);
+  }
+
+  async getTopCourses() {
+    return this.repo.createQueryBuilder('course')
+      .leftJoin('course.tutor', 'tutor')
+      .leftJoin('tutor.tutorDetail', 'tutorDetail')
+      .leftJoin('course.subject', 'subject')
+      .leftJoin('course.language', 'language')
+      .select([
+        'course.id',
+        'course.name',
+        'course.description',
+        'course.thumbnailUrl',
+        'course.price',
+        'course.discountPrice',
+        'course.accessType',
+        'course.totalDuration',
+        'course.totalLectures',
+        'course.averageRating',
+        'course.totalRatings',
+        'course.tutorId',
+        'course.subjectId',
+        'course.languageId',
+        'course.createdAt',
+        'tutor.id',
+        'tutorDetail.name',
+        'tutorDetail.profileImage',
+        'subject.id',
+        'subject.name',
+        'language.id',
+        'language.name',
+      ])
+      .where('course.topCourse = :topCourse', { topCourse: true })
+      .andWhere('course.status = :status', { status: CourseStatus.APPROVED })
+      .orderBy('course.createdAt', 'DESC')
+      .getMany();
+  }
+
+  async updateTopCourse(id: string, topCourse: boolean) {
+    const result = await this.repo.findOne({ where: { id } });
+    if (!result) throw new NotFoundException('Course not found!');
+
+    if (topCourse) {
+      const settings = await this.settingsService.getSettings();
+      const max = settings?.maxTopCourses ?? 10;
+      const currentCount = await this.repo.count({ where: { topCourse: true } });
+      if (currentCount >= max) {
+        throw new ConflictException(`Maximum top courses limit (${max}) reached. Remove a top course first.`);
+      }
+    }
+
+    result.topCourse = topCourse;
+    return this.repo.save(result);
   }
 
   async updateStatus(id: string, dto: CourseStatusDto, adminId?: string) {
@@ -413,26 +455,52 @@ async thumbnail(img: string, result: Course) {
 
     if (oldStatus !== dto.status) {
       await this.notifyTutorStatusChange(result.tutorId, result.name, dto.status);
-      
-      if (adminId) {
-        let actionType: AdminActionType;
 
       if (dto.status === CourseStatus.APPROVED) {
-        actionType = AdminActionType.COURSE_APPROVED;
-      } else if (dto.status === CourseStatus.REJECTED) {
-        actionType = AdminActionType.COURSE_REJECTED;
-      } else {
-        actionType = AdminActionType.COURSE_UPDATED;
+        const tutorAccount = await this.accountRepo.findOne({
+          where: { id: result.tutorId },
+          relations: ['tutorDetail'],
+        });
+        if (tutorAccount?.email) {
+          const tutorName = tutorAccount.tutorDetail?.[0]?.name || 'Tutor';
+          const courseLink = process.env.FRONTEND_URL
+            ? `${process.env.FRONTEND_URL}/courses/${result.id}`
+            : `https://wiznovy.com/courses/${result.id}`;
+          this.nodeMailerService.sendCourseApprovedEmail({
+            email: tutorAccount.email,
+            tutorName,
+            courseName: result.name,
+            courseLink,
+          }).catch(() => {});
+        }
+        await this.notificationsService.notifyCourseApproved(result.tutorId, result.name);
       }
-        
-        await this.adminActionLogService.log(
-          adminId,
-          actionType,
-          id,
-          AdminActionTargetType.COURSE,
-          `Course "${result.name}" status changed from ${oldStatus} to ${dto.status}`
+
+      if (dto.status === CourseStatus.REJECTED) {
+        const tutorAccount = await this.accountRepo.findOne({
+          where: { id: result.tutorId },
+          relations: ['tutorDetail'],
+        });
+        if (tutorAccount?.email) {
+          const tutorName = tutorAccount.tutorDetail?.[0]?.name || 'Tutor';
+          const editLink = process.env.FRONTEND_URL
+            ? `${process.env.FRONTEND_URL}/tutor/courses/${result.id}/edit`
+            : `https://wiznovy.com/tutor/courses/${result.id}/edit`;
+          this.nodeMailerService.sendCourseRejectedEmail({
+            email: tutorAccount.email,
+            tutorName,
+            courseName: result.name,
+            rejectionReason: dto.rejectionReason || 'Please review and update your course content.',
+            editLink,
+          }).catch(() => {});
+        }
+        await this.notificationsService.notifyCourseNeedsRevisions(
+          result.tutorId,
+          result.name,
+          dto.rejectionReason || 'Please review and update your course content.',
         );
       }
+    
     }
 
     return updatedCourse;
@@ -447,24 +515,24 @@ async thumbnail(img: string, result: Course) {
     return this.repo.save(result);
   }
 
-  async deleteCourse(id: string, reason: string) {
-    const result = await this.repo.findOne({ where: { id } });
-    if (!result) {
-      throw new NotFoundException('Course not found!');
-    }
-    result.status = CourseStatus.DELETED;
-    result.deletionReason = reason;
-    const updatedCourse = await this.repo.save(result);
+  // async deleteCourse(id: string, reason: string) {
+  //   const result = await this.repo.findOne({ where: { id } });
+  //   if (!result) {
+  //     throw new NotFoundException('Course not found!');
+  //   }
+  //   result.status = CourseStatus.DELETED;
+  //   result.deletionReason = reason;
+  //   const updatedCourse = await this.repo.save(result);
 
-    await this.notificationsService.create({
-      title: 'Course Deleted',
-      desc: `Your course "${result.name}" has been deleted. Reason: ${reason}`,
-      type: NotificationType.USER_PRODUCT,
-      accountId: result.tutorId
-    });
+  //   await this.notificationsService.create({
+  //     title: 'Course Deleted',
+  //     desc: `Your course "${result.name}" has been deleted. Reason: ${reason}`,
+  //     type: NotificationType.USER_PRODUCT,
+  //     accountId: result.tutorId
+  //   });
 
-    return updatedCourse;
-  }
+  //   return updatedCourse;
+  // }
 
   private async notifyTutorStatusChange(tutorId: string, courseName: string, newStatus: CourseStatus) {
     const statusMessages = {
@@ -474,12 +542,10 @@ async thumbnail(img: string, result: Course) {
       [CourseStatus.PENDING]: 'Your course is under review.'
     };
 
-    await this.notificationsService.create({
-      title: 'Course Status Update',
-      desc: `${courseName}: ${statusMessages[newStatus]}`,
-      type: NotificationType.USER_PRODUCT,
-      accountId: tutorId
-    });
+
+
+
+
   }
 
   async updateCourseStats(courseId: string) {
@@ -521,7 +587,7 @@ async thumbnail(img: string, result: Course) {
     const notifications = users.map(user => ({
       title: 'New Course Available!',
       desc: `Check out our new course: ${course.name}`,
-      type: NotificationType.USER_PRODUCT,
+      type: NotificationType.COURSE_PAGE,
       accountId: user.id
     }));
 

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { CreateContactUsCategoryDto, ContactUsCategoryPaginationDto, ContactUsCategoryStatusDto, BulkContactUsCategoryStatusDto } from './dto/create-contact-us-category.dto';
+import { CreateContactUsCategoryDto, ContactUsCategoryPaginationDto, ContactUsCategoryStatusDto, BulkContactUsCategoryStatusDto, ContactUsCategoryByTypeDto } from './dto/create-contact-us-category.dto';
 import { UpdateContactUsCategoryDto } from './dto/update-contact-us-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Brackets, Not } from 'typeorm';
@@ -31,6 +31,7 @@ export class ContactUsCategoryService {
       .select([
         'contactUsCategory.id',
         'contactUsCategory.title',
+        'contactUsCategory.type',
         'contactUsCategory.status',
         'contactUsCategory.createdAt',
         'contactUsCategory.updatedAt'
@@ -50,6 +51,10 @@ export class ContactUsCategoryService {
       query.andWhere('contactUsCategory.status = :status', { status: dto.status });
     }
 
+    if (dto.type) {
+      query.andWhere('contactUsCategory.type = :type', { type: dto.type });
+    }
+
     const [result, total] = await query
       .orderBy('contactUsCategory.title', 'ASC')
       .skip(dto.offset)
@@ -59,12 +64,19 @@ export class ContactUsCategoryService {
     return { result, total };
   }
 
-  async findByUser() {
-    const [result, total] = await this.repo
+  async findByUser(dto: ContactUsCategoryByTypeDto) {
+    const query = this.repo
       .createQueryBuilder('contactUsCategory')
-      .where('contactUsCategory.status = :status', { status: DefaultStatus.ACTIVE })
+      .where('contactUsCategory.status = :status', { status: DefaultStatus.ACTIVE });
+    
+    if (dto.type) {
+      query.andWhere('contactUsCategory.type = :type', { type: dto.type });
+    }
+    
+    const [result, total] = await query
       .orderBy('contactUsCategory.title', 'ASC')
       .getManyAndCount();
+    
     return { result, total };
   }
 

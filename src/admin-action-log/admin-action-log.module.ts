@@ -1,4 +1,3 @@
-
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
@@ -9,12 +8,16 @@ import { AdminActionLogService } from './admin-action-log.service';
 import { AdminActionLogController } from './admin-action-log.controller';
 import { AdminAuditInterceptor } from './interceptors/admin-audit.interceptor';
 import { AuditLogWorkerService } from './services/audit-log-worker.service';
+import { AuthModule } from '../auth/auth.module';
+import { UserDetail } from '../user-details/entities/user-detail.entity';
+import { TutorDetail } from '../tutor-details/entities/tutor-detail.entity';
 
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AdminActionLog]),
+    TypeOrmModule.forFeature([AdminActionLog, UserDetail, TutorDetail]),
     RedisModule,
+    AuthModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

@@ -62,6 +62,18 @@ export class BudgetStatusDto {
   status: DefaultStatus;
 }
 
+export class BulkBudgetStatusDto {
+  @ApiProperty({ example: ['id1', 'id2'], description: 'Array of budget IDs' })
+  @IsNotEmpty()
+  @IsString({ each: true })
+  ids: string[];
+
+  @ApiProperty({ enum: DefaultStatus, example: DefaultStatus.ACTIVE })
+  @IsNotEmpty()
+  @IsEnum(DefaultStatus)
+  status: DefaultStatus;
+}
+
 export class BudgetPaginationDto {
   @ApiProperty({ example: 20, minimum: 10, maximum: 100 })
   @IsNotEmpty()

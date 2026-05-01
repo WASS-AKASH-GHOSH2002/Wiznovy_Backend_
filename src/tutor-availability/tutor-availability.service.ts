@@ -5,8 +5,9 @@ import { TutorAvailability } from './entities/tutor-availability.entity';
 import { TutorDetail } from '../tutor-details/entities/tutor-detail.entity';
 import { Session } from '../session/entities/session.entity';
 import { TutorBlock } from '../tutor-block/entities/tutor-block.entity';
-import { CreateAvailabilityDto, AvailabilityPaginationDto } from './dto/create-availability.dto';
+import { CreateAvailabilityDto, AvailabilityPaginationDto, BlockSlotDto } from './dto/create-availability.dto';
 import { DefaultStatus, SessionStatus } from 'src/enum';
+import { SettingsService } from 'src/settings/settings.service';
 import dayjs from 'dayjs';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
@@ -26,7 +27,8 @@ export class TutorAvailabilityService {
     @InjectRepository(Session)
     private readonly sessionRepo: Repository<Session>,
     @InjectRepository(TutorBlock)
-    private readonly blockRepo: Repository<TutorBlock>
+    private readonly blockRepo: Repository<TutorBlock>,
+    private readonly settingsService: SettingsService,
   ) {}
 
   async create(dto: CreateAvailabilityDto, tutorId: string) {
@@ -144,16 +146,19 @@ export class TutorAvailabilityService {
       }
     });
 
+    const sessionSettings = await this.settingsService.getSessionSettings();
+    const bufferMinutes = sessionSettings?.session_buffer_minutes ?? 15;
+
     const allSlots = availabilities.flatMap((availability) => {
       const slots = this.calculateTimeSlots(
         availability.startTime,
         availability.endTime,
-        tutor.sessionDuration,
-        tutor.bufferTimeMinutes,
+        60,
+        bufferMinutes,
       );
 
       return slots
-        .filter(slot => 
+        .filter(slot =>
           !this.isSlotBooked(slot.start, slot.end, bookedSlots) &&
           !this.isSlotBlocked(slot.start, slot.end, blockedSlots)
         )
@@ -161,17 +166,17 @@ export class TutorAvailabilityService {
           ...slot,
           availabilityId: availability.id,
           dayOfWeek: availability.dayOfWeek,
-          sessionDuration: tutor.sessionDuration,
-          bufferTime: tutor.bufferTimeMinutes,
-          price: this.calculateSessionPrice(tutor.hourlyRate, tutor.sessionDuration),
+          sessionDuration: 60,
+          bufferTime: 15,
+          price: this.calculateSessionPrice(tutor.hourlyRate, 60),
         }));
     });
 
     return {
       tutorId,
       date,
-      sessionDuration: tutor.sessionDuration,
-      bufferTime: tutor.bufferTimeMinutes,
+      sessionDuration: 60,
+      bufferTime: 15,
       totalSlots: allSlots.length,
       slots: allSlots
     };
@@ -223,7 +228,7 @@ export class TutorAvailabilityService {
   }
 
   private normalizeTime(time: string): string {
-    // Convert HH:MM:SS to HH:MM or keep HH:MM as is
+   
     const parts = time.split(':');
     return `${parts[0]}:${parts[1]}`;
   }
@@ -270,7 +275,7 @@ export class TutorAvailabilityService {
     return this.availabilityRepo.save(availability);
   }
 
-  async blockSlot(dto: any, accountId: string) {
+  async blockSlot(dto: BlockSlotDto, accountId: string) {
     const tutor = await this.tutorRepo.findOne({ where: { accountId } });
     if (!tutor) {
       throw new NotFoundException('Tutor not found');
@@ -290,14 +295,19 @@ export class TutorAvailabilityService {
 
   async findTutorBlocks(accountId: string) {
     const tutor = await this.tutorRepo.findOne({ where: { accountId } });
-    if (!tutor) {
-      throw new NotFoundException('Tutor not found');
-    }
+    if (!tutor) throw new NotFoundException('Tutor not found');
 
     return await this.blockRepo.find({
       where: { tutorId: accountId, status: DefaultStatus.ACTIVE },
       order: { blockDate: 'ASC', startTime: 'ASC' }
     });
+  }
+
+  async unblockSlot(id: string, accountId: string) {
+    const block = await this.blockRepo.findOne({ where: { id, tutorId: accountId } });
+    if (!block) throw new NotFoundException('Blocked slot not found');
+    block.status = DefaultStatus.DELETED;
+    return this.blockRepo.save(block);
   }
 
   private isSlotBooked(slotStart: string, slotEnd: string, bookedSlots: Session[]): boolean {
@@ -325,8 +335,10 @@ export class TutorAvailabilityService {
     });
   }
 
-  private calculateSessionPrice(hourlyRate: number, durationMinutes: number): number {
-    const hourlyFraction = durationMinutes / 60;
-    return Math.round(hourlyRate * hourlyFraction * 100) / 100;
-  }
+ private calculateSessionPrice(hourlyRate: number, durationMinutes: number): number {
+  const hourlyFraction = durationMinutes / 60;
+  const price = hourlyRate * hourlyFraction;
+  return Number(price.toFixed(2));
 }
+}
+

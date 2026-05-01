@@ -18,6 +18,99 @@ export class WalletTransactionService {
 
   
 
+  async adminFindOne(id: string) {
+    const transaction = await this.transactionRepo
+      .createQueryBuilder('transaction')
+      .leftJoin('transaction.account', 'account')
+      .leftJoin('account.userDetail', 'userDetail')
+      .leftJoin('account.tutorDetail', 'tutorDetail')
+      .leftJoin('transaction.wallet', 'wallet')
+      .select([
+        'transaction.id',
+        'transaction.amount',
+        'transaction.type',
+        'transaction.status',
+        'transaction.balanceBefore',
+        'transaction.balanceAfter',
+        'transaction.paymentIntentId',
+        'transaction.createdAt',
+        'transaction.updatedAt',
+        'transaction.accountId',
+        'transaction.walletId',
+        'account.id',
+        'account.email',
+        'account.roles',
+        'userDetail.name',
+         'userDetail.userId',
+         'tutorDetail.name',
+        'tutorDetail.tutorId',
+        'wallet.id',
+        'wallet.walletId',
+        'wallet.balance',
+        'wallet.totalEarnings',
+        'wallet.totalWithdrawals',
+      ])
+      .where('transaction.id = :id', { id })
+      .getOne();
+
+    if (!transaction) {
+      throw new NotFoundException('Transaction not found');
+    }
+
+    return transaction;
+  }
+
+  async adminFindAll(dto: WalletTransactionPaginationDto) {
+    const queryBuilder = this.transactionRepo.createQueryBuilder('transaction')
+      .leftJoin('transaction.account', 'account')
+      .leftJoin('account.userDetail', 'userDetail')
+      .leftJoin('account.tutorDetail', 'tutorDetail')
+      .select([
+        'transaction.id',
+        'transaction.amount',
+        'transaction.type',
+        'transaction.status',
+        'transaction.balanceBefore',
+        'transaction.balanceAfter',
+        'transaction.createdAt',
+        'transaction.accountId',
+        'account.id',
+        'account.email',
+        'account.roles',
+        'userDetail.name',
+
+        'tutorDetail.name',
+      ]);
+
+    if (dto.accountId) {
+      queryBuilder.andWhere('transaction.accountId = :accountId', { accountId: dto.accountId });
+    }
+
+    if (dto.type) {
+      queryBuilder.andWhere('transaction.type = :type', { type: dto.type });
+    }
+
+    if (dto.status) {
+      queryBuilder.andWhere('transaction.status = :status', { status: dto.status });
+    }
+
+    if (dto.fromDate) {
+      queryBuilder.andWhere('transaction.createdAt >= :fromDate', { fromDate: dto.fromDate });
+    }
+
+    if (dto.toDate) {
+      queryBuilder.andWhere('transaction.createdAt <= :toDate', { toDate: `${dto.toDate} 23:59:59` });
+    }
+
+    const [result, total] = await queryBuilder
+      .orderBy('transaction.createdAt', 'DESC')
+      .skip(dto.offset)
+      .take(dto.limit)
+      .getManyAndCount();
+
+    return { result, total };
+  }
+
   async findAll(accountId: string, dto: WalletTransactionPaginationDto) {
     const queryBuilder = this.transactionRepo.createQueryBuilder('transaction')
       .leftJoin('transaction.wallet', 'wallet')
@@ -58,10 +151,37 @@ export class WalletTransactionService {
   }
 
   async findOne(id: string, accountId: string) {
-    const transaction = await this.transactionRepo.findOne({
-      where: { id, accountId },
-      relations: ['wallet']
-    });
+    const transaction = await this.transactionRepo
+      .createQueryBuilder('transaction')
+      .leftJoin('transaction.account', 'account')
+      .leftJoin('account.userDetail', 'userDetail')
+      .leftJoin('account.tutorDetail', 'tutorDetail')
+      .leftJoin('transaction.wallet', 'wallet')
+      .select([
+        'transaction.id',
+        'transaction.amount',
+        'transaction.type',
+        'transaction.status',
+        'transaction.balanceBefore',
+        'transaction.balanceAfter',
+        'transaction.paymentIntentId',
+        'transaction.createdAt',
+        'transaction.updatedAt',
+        'transaction.accountId',
+        'transaction.walletId',
+        'account.id',
+        'account.email',
+        'account.roles',
+        'userDetail.name',
+        'tutorDetail.name',
+        'wallet.id',
+        'wallet.balance',
+        'wallet.totalEarnings',
+        'wallet.totalWithdrawals',
+      ])
+      .where('transaction.id = :id', { id })
+      .andWhere('transaction.accountId = :accountId', { accountId })
+      .getOne();
 
     if (!transaction) {
       throw new NotFoundException('Transaction not found');

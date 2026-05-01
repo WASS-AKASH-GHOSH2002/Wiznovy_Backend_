@@ -24,13 +24,16 @@ export class AdminAuditInterceptor implements NestInterceptor {
     const body = request.body;
     const ip = request.ip || request.connection.remoteAddress;
     const userAgent = request.headers['user-agent'];
+    const actionType = this.mapMethodToAction(method, url);
+    const targetType = this.extractTargetType(url);
+    const targetId = this.extractTargetId(url, body);
 
     const auditData = {
       adminId: user.id,
       role: user.roles,
-      actionType: this.mapMethodToAction(method),
-      targetId: this.extractTargetId(url, body),
-      targetType: this.extractTargetType(url),
+      actionType,
+      targetId,
+      targetType,
       oldData: null,
       newData: body,
       ipAddress: ip,
@@ -44,13 +47,21 @@ export class AdminAuditInterceptor implements NestInterceptor {
     );
   }
 
-  private mapMethodToAction(method: string): AdminActionType {
+  private mapMethodToAction(method: string, url: string): AdminActionType {
+    const lower = url.toLowerCase();
+    if (lower.includes('/approve')) return AdminActionType.APPROVE;
+    if (lower.includes('/reject')) return AdminActionType.REJECT;
+    if (lower.includes('/suspend')) return AdminActionType.SUSPEND;
+    if (lower.includes('/activate')) return AdminActionType.ACTIVATE;
+    if (lower.includes('/cancel')) return AdminActionType.SESSION_CANCELLED;
+    if (lower.includes('/payout')) return AdminActionType.PAYOUT_PROCESSED;
+    if (lower.includes('/status')) return AdminActionType.USER_STATUS_CHANGED;
     switch (method) {
-      case 'POST': return AdminActionType.CREATE;
-      case 'PUT': return AdminActionType.UPDATE;
-      case 'PATCH': return AdminActionType.UPDATE;
+      case 'POST':   return AdminActionType.CREATE;
+      case 'PUT':
+      case 'PATCH':  return AdminActionType.UPDATE;
       case 'DELETE': return AdminActionType.DELETE;
-      default: return AdminActionType.UPDATE;
+      default:       return AdminActionType.UPDATE;
     }
   }
 
@@ -61,7 +72,9 @@ export class AdminAuditInterceptor implements NestInterceptor {
 
   private extractTargetType(url: string): string | null {
     const segments = url.split('/').filter(Boolean);
-    const resourceSegment = segments.find(s => s !== 'api' && s !== 'v1' && !/^[a-f\d-]{36}$/.test(s) && !/^\d+$/.test(s));
+    const resourceSegment = segments.find(
+      s => s !== 'api' && s !== 'v1' && !/^[a-f\d-]{36}$/.test(s) && !/^\d+$/.test(s)
+    );
     return resourceSegment || null;
   }
 
@@ -69,7 +82,7 @@ export class AdminAuditInterceptor implements NestInterceptor {
     try {
       await this.redis.lpush(this.QUEUE_KEY, JSON.stringify(auditData));
     } catch (error) {
-      console.error('Failed to queue audit log:', error);
+      console.error('❌ Failed to queue audit log:', error);
     }
   }
 }

@@ -39,6 +39,7 @@ import { Account } from 'src/account/entities/account.entity';
 import { diskStorage } from 'multer';
 import { extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @Controller('study-material')
 export class StudyMaterialController {
@@ -46,9 +47,7 @@ export class StudyMaterialController {
     private readonly studyMaterialService: StudyMaterialService,
   ) {}
 
-  /* =====================================================
-     CREATE STUDY MATERIAL (TUTOR)
-  ====================================================== */
+  
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.TUTOR)
@@ -73,12 +72,12 @@ export class StudyMaterialController {
     return this.handleCreateStudyMaterial(dto, files);
   }
 
-  /* =====================================================
-     CREATE STUDY MATERIAL (ADMIN / STAFF)
-  ====================================================== */
+
   @Post('admin')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+   @CheckPermissions([PermissionAction.CREATE, 'study_material'])
   @UsePipes(new ValidationPipe({ transform: true }))
   @UseInterceptors(
     FileFieldsInterceptor(
@@ -100,9 +99,7 @@ export class StudyMaterialController {
     return this.handleCreateStudyMaterial(dto, files);
   }
 
-  /* =====================================================
-     LISTING
-  ====================================================== */
+  
   @Get('list')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
@@ -127,9 +124,6 @@ export class StudyMaterialController {
     return this.studyMaterialService.findByUser(dto, user?.id);
   }
 
-  /* =====================================================
-     READ
-  ====================================================== */
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.studyMaterialService.findOne(id);
@@ -144,11 +138,9 @@ export class StudyMaterialController {
     return this.studyMaterialService.getStudyContent(id, user?.id);
   }
 
-  /* =====================================================
-     UPDATE DETAILS
-  ====================================================== */
   @Put(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'study_material'])
   update(
@@ -168,9 +160,6 @@ export class StudyMaterialController {
     return this.studyMaterialService.update(id, dto);
   }
 
-  /* =====================================================
-     PDF UPLOAD (TUTOR)
-  ====================================================== */
   @Put('pdf/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.TUTOR)
@@ -191,11 +180,9 @@ export class StudyMaterialController {
     return this.handlePdfUpload(id, file);
   }
 
-  /* =====================================================
-     PDF UPLOAD (ADMIN / STAFF)
-  ====================================================== */
   @Put('admin/pdf/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'study_material'])
   @UseInterceptors(
@@ -215,9 +202,7 @@ export class StudyMaterialController {
     return this.handlePdfUpload(id, file);
   }
 
-  /* =====================================================
-     PRIVATE HELPERS
-  ====================================================== */
+
   private handleCreateStudyMaterial(
     dto: CreateStudyMaterialDto,
     files: {
@@ -238,9 +223,6 @@ export class StudyMaterialController {
     return this.studyMaterialService.pdf(file.path, material);
   }
 
-  /* =====================================================
-     MULTER CONFIGS
-  ====================================================== */
   private static createStudyMaterialUploadConfig() {
     return {
       storage: diskStorage({

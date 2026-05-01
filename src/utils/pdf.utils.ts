@@ -160,20 +160,20 @@ export class PdfUtils {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
-      'attachment; filename="all-users.pdf"'
+      'attachment; filename="all-Students.pdf"'
     );
 
     doc.pipe(res);
 
     /* ===== HEADER ===== */
 
-    doc.fontSize(20).text('All Users Report', { align: 'center' });
+    doc.fontSize(20).text('All Students Report', { align: 'center' });
     doc.moveDown();
     doc.fontSize(12).text(
       `Generated on: ${new Date().toLocaleDateString()}`,
       { align: 'right' }
     );
-    doc.text(`Total Users: ${users.length}`, { align: 'right' });
+    doc.text(`Total Students: ${users.length}`, { align: 'right' });
 
     doc.moveDown(2);
 

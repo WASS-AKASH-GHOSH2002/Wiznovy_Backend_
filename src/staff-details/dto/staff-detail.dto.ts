@@ -1,12 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { Gender } from 'src/enum';
 
 export class StaffDetailDto {
@@ -17,63 +10,71 @@ export class StaffDetailDto {
   @MaxLength(50)
   name: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Designation ID (UUID)' })
   @IsNotEmpty()
-  @IsString()
-  @MinLength(3)
-  @MaxLength(50)
-  designation: string;
+  @IsUUID()
+  designationId: string;
 
-  @ApiProperty()
+  @ApiProperty({ enum: Gender })
   @IsNotEmpty()
   @IsEnum(Gender)
   gender: Gender;
 
-  @ApiProperty()
+  @ApiProperty({ example: '1995-05-15' })
   @IsNotEmpty()
-  dob: Date;
+  @IsDateString()
+  dob: string;
 
   @IsOptional()
   accountId: string;
 }
 
 export class UpdateStaffDetailDto {
-  @ApiProperty()
-  @IsNotEmpty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
   @MinLength(3)
   @MaxLength(50)
   name: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  @IsString()
-  @MinLength(3)
-  @MaxLength(50)
-  designation: string;
+  @ApiPropertyOptional({ description: 'Designation ID (UUID)' })
+  @IsOptional()
+  @IsUUID()
+  designationId: string;
 
-  @ApiProperty()
-  @IsNotEmpty()
+  @ApiPropertyOptional({ enum: Gender })
+  @IsOptional()
   @IsEnum(Gender)
   gender: Gender;
 
-  @ApiProperty()
-  @IsNotEmpty()
-  dob: Date;
+  @ApiPropertyOptional({ example: '1995-05-15' })
+  @IsOptional()
+  @IsDateString()
+  dob: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ example: 'Mumbai' })
   @IsOptional()
   @IsString()
-  @MinLength(10)
   @MaxLength(20)
-  panNo: string;
+  city: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ example: 'Maharashtra' })
   @IsOptional()
   @IsString()
-  @MinLength(12)
   @MaxLength(20)
-  aadharNo: string;
+  state: string;
+
+  @ApiPropertyOptional({ example: 'India' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  country: string;
+
+  @ApiPropertyOptional({ example: '400001' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  pin: string;
 
   @IsOptional()
   updatedBy: string;

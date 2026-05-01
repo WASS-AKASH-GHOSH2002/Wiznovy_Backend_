@@ -7,12 +7,14 @@ import { UserDetail } from './entities/user-detail.entity';
 import { UserDetailsController } from './user-details.controller';
 import { UserDetailsService } from './user-details.service';
 import { Account } from 'src/account/entities/account.entity';
+import { NodeMailerModule } from 'src/node-mailer/node-mailer.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserDetail,Account]),
     AuthModule,
     AdminActionLogModule,
+    NodeMailerModule,
     MulterModule.register({ dest: './uploads/UserDetail' }),
   ],
   controllers: [UserDetailsController],

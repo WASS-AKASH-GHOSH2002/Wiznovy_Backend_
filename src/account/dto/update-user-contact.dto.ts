@@ -8,7 +8,7 @@ export class UpdateUserContactDto {
   })
   @IsOptional()
   @IsEmail()
-  @MaxLength(100)
+  @MaxLength(254)
   email?: string;
 
   @ApiPropertyOptional({ 
@@ -17,6 +17,6 @@ export class UpdateUserContactDto {
   })
   @IsOptional()
   @IsString()
-  @MaxLength(20)
+  @MaxLength(10)
   phoneNumber?: string;
 }

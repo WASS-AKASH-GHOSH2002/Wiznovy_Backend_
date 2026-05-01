@@ -27,7 +27,7 @@ import { extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { DefaultStatus, UserRole, FileSizeLimit } from 'src/enum';
+import { DefaultStatus, UserRole, FileSizeLimit, PermissionAction } from 'src/enum';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import {
   ApiTags,
@@ -39,6 +39,8 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @ApiTags('walk-through')
 @ApiBearerAuth('JWT-auth')
@@ -67,9 +69,10 @@ export class WalkThroughController {
   constructor(private readonly walkThroughService: WalkThroughService) {}
 
   @Post()
-  // @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  // @Roles(UserRole.ADMIN, UserRole.STAFF)
-  // @CheckPermissions([PermissionAction.CREATE, 'walkthrough'])
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.CREATE, 'walkthrough'])
   @UseInterceptors(FileInterceptor('file', WalkThroughController.getStorageConfig()))
   @ApiOperation({ summary: 'Create a new walk-through' })
   @ApiConsumes('multipart/form-data')
@@ -100,7 +103,7 @@ export class WalkThroughController {
   @Get('list')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  //@CheckPermissions([PermissionAction.READ, 'walkthrough'])
+  @CheckPermissions([PermissionAction.READ, 'walkthrough'])
   @ApiOperation({ summary: 'Get paginated walk-through list' })
   @ApiQuery({ name: 'limit', type: Number, required: true, example: 20 })
   @ApiQuery({ name: 'offset', type: Number, required: true, example: 0 })
@@ -122,8 +125,9 @@ export class WalkThroughController {
 
   @Get(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
- // @CheckPermissions([PermissionAction.READ, 'walkthrough'])
+ @CheckPermissions([PermissionAction.READ, 'walkthrough'])
   @ApiOperation({ summary: 'Get walk-through by ID' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
   @ApiResponse({ status: 200, description: 'Returns walk-through details' })
@@ -135,8 +139,9 @@ export class WalkThroughController {
 
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  //@CheckPermissions([PermissionAction.UPDATE, 'walkthrough'])
+  @CheckPermissions([PermissionAction.UPDATE, 'walkthrough'])
   @ApiOperation({ summary: 'Update walk-through details' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
   @ApiResponse({ status: 200, description: 'Walk-through successfully updated' })
@@ -148,8 +153,9 @@ export class WalkThroughController {
 
   @Put('update/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
- // @CheckPermissions([PermissionAction.UPDATE, 'walkthrough'])
+ @CheckPermissions([PermissionAction.UPDATE, 'walkthrough'])
   @UseInterceptors(FileInterceptor('file', WalkThroughController.getStorageConfig()))
   @ApiOperation({ summary: 'Update walk-through image' })
   @ApiConsumes('multipart/form-data')
@@ -187,8 +193,9 @@ export class WalkThroughController {
 
   @Put('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
- // @CheckPermissions([PermissionAction.UPDATE, 'walkthrough'])
+  @CheckPermissions([PermissionAction.UPDATE, 'walkthrough'])
   @ApiOperation({ summary: 'Update walk-through status' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
   @ApiResponse({ status: 200, description: 'Status successfully updated' })
@@ -200,8 +207,9 @@ export class WalkThroughController {
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
- // @CheckPermissions([PermissionAction.DELETE, 'walkthrough'])
+  @CheckPermissions([PermissionAction.DELETE, 'walkthrough'])
   @ApiOperation({ summary: 'Delete walk-through' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
   @ApiResponse({ status: 200, description: 'Walk-through successfully deleted' })

@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -17,12 +18,18 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateAccountDto {
-  @ApiProperty({ example: 'john_doe', minLength: 5, maxLength: 100 })
+
+  @ApiProperty({ example: 'john@example.com', maxLength: 55 })
   @IsNotEmpty()
+  @MinLength(1)
+  @MaxLength(55)
+  email: string;
+
+  @ApiPropertyOptional({ example: '+1234567890', maxLength: 15 })
+  @IsOptional()
   @IsString()
-  @MinLength(5)
-  @MaxLength(100)
-  loginId: string;
+  @MaxLength(15)
+  phoneNumber: string;
 
   @ApiProperty({ example: 'password123', minLength: 5, maxLength: 30 })
   @IsNotEmpty()
@@ -37,12 +44,12 @@ export class CreateAccountDto {
   @MaxLength(30)
   name: string;
 
-  @ApiProperty({ example: 'john@example.com', maxLength: 55 })
-  @IsNotEmpty()
-  @MinLength(1)
-  @MaxLength(55)
-  email: string;
+  @ApiPropertyOptional({ example: 'uuid-of-designation' })
+  @IsOptional()
+  @IsUUID()
+  designationId: string;
 
+  
   @ApiPropertyOptional({ example: '1990-01-01' })
   @IsOptional()
   dob: Date;
@@ -73,20 +80,40 @@ export class CreateAccountDto {
 }
 
 export class UpdateStaffPasswordDto {
-  @ApiPropertyOptional({ example: 'john_doe' })
-  @IsOptional()
-  @IsString()
-  loginId: string;
+   @ApiProperty({ example: 'john@example.com', maxLength: 55 })
+  @IsNotEmpty()
+  @MinLength(1)
+  @MaxLength(55)
+  email: string;
+
 
   @ApiPropertyOptional({ example: 'newpassword123' })
   @IsOptional()
   password: string;
 }
 
+export class UpdateMyPasswordDto {
+  @ApiProperty({ example: 'currentPassword123' })
+  @IsNotEmpty()
+  @IsString()
+  currentPassword: string;
+
+  @ApiProperty({ example: 'NewPassword@123' })
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
+}
+
 export class UpdateStaffDto {
   @ApiPropertyOptional({ example: 'John Smith' })
   @IsOptional()
   name: string;
+
+  @ApiPropertyOptional({ example: 'uuid-of-designation' })
+  @IsOptional()
+  @IsUUID()
+  designation: string;
 
   @ApiPropertyOptional({ example: 'john.smith@example.com' })
   @IsOptional()
@@ -144,6 +171,39 @@ export class EmailUpdateDto {
   @ApiPropertyOptional({ example: '123456' })
   @IsOptional()
   otp: string;
+}
+
+export class StaffPaginationDto {
+  @ApiProperty({ example: 20, minimum: 10, maximum: 100 })
+  @IsNotEmpty()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(10)
+  @Max(100)
+  limit: number;
+
+  @ApiProperty({ example: 0, minimum: 0 })
+  @IsNotEmpty()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  offset: number;
+
+  @ApiPropertyOptional({ example: 'john' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  keyword: string;
+
+  @ApiPropertyOptional({ enum: DefaultStatus })
+  @IsOptional()
+  @IsEnum(DefaultStatus)
+  status: DefaultStatus;
+
+  @ApiPropertyOptional({ example: 'uuid-of-designation' })
+  @IsOptional()
+  @IsUUID()
+  designationId: string;
 }
 
 export class SearchUserPaginationDto {

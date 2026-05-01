@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, Min, IsEnum, IsDateString } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, IsEnum, IsDateString, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PaymentStatus, PurchaseType } from '../../enum';
@@ -23,6 +23,31 @@ export class PaymentPaginationDto {
   @IsOptional()
   @IsDateString()
   date: string;
+
+  @ApiPropertyOptional({ description: 'Filter from date (YYYY-MM-DD)' })
+  @IsOptional()
+  @IsDateString()
+  fromDate: string;
+
+  @ApiPropertyOptional({ description: 'Filter to date (YYYY-MM-DD)' })
+  @IsOptional()
+  @IsDateString()
+  toDate: string;
+
+  @ApiPropertyOptional({ description: 'Filter by transaction/payment ID' })
+  @IsOptional()
+  @IsString()
+  transactionId: string;
+
+  @ApiPropertyOptional({ description: 'Filter by student user ID (e.g. WIZ_STU_...)' })
+  @IsOptional()
+  @IsString()
+  userId: string;
+
+  @ApiPropertyOptional({ description: 'Filter by account ID' })
+  @IsOptional()
+  @IsUUID()
+  accountId: string;
 
   @ApiPropertyOptional({ description: 'Number of records to skip', default: 0 })
   @IsOptional()

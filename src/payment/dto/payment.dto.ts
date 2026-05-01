@@ -1,5 +1,8 @@
 import { IsNumber, IsString, IsOptional, IsEnum, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { PaymentMethod } from 'src/enum';
+
+
 
 export class CreatePaymentIntentDto {
   @ApiProperty({ description: 'Amount in INR', example: 500 })
@@ -21,6 +24,10 @@ export class CreateSessionPaymentDto {
   @ApiProperty({ description: 'Session ID' })
   @IsString()
   sessionId: string;
+
+  @ApiProperty({ description: 'Payment method', enum: PaymentMethod })
+  @IsEnum(PaymentMethod)
+  paymentMethod: PaymentMethod;
 }
 
 export class CreateCoursePaymentDto {
@@ -28,10 +35,9 @@ export class CreateCoursePaymentDto {
   @IsString()
   courseId: string;
 
-  @ApiProperty({ description: 'Amount in INR', example: 1500 })
-  @IsNumber()
-  @Min(1)
-  amount: number;
+  @ApiProperty({ description: 'Payment method', enum: PaymentMethod })
+  @IsEnum(PaymentMethod)
+  paymentMethod: PaymentMethod;
 }
 
 export class CreateRefundDto {

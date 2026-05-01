@@ -26,6 +26,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @ApiTags('languages')
 @ApiBearerAuth('JWT-auth')
@@ -35,6 +36,7 @@ export class LanguagesController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.CREATE, 'language'])
   @ApiOperation({ summary: 'Create new language' })
@@ -45,6 +47,19 @@ export class LanguagesController {
   @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   create(@Body() dto: LanguageDto) {
     return this.languagesService.create(dto);
+  }
+
+  @Put('bulk-status')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'language'])
+  @ApiOperation({ summary: 'Bulk update language status' })
+  @ApiBody({ type: BulkLanguageStatusDto })
+  @ApiResponse({ status: 200, description: 'Languages status updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  bulkUpdateStatus(@Body() dto: BulkLanguageStatusDto) {
+    return this.languagesService.bulkUpdateStatus(dto);
   }
 
   @Get('all')
@@ -73,9 +88,9 @@ export class LanguagesController {
   findOne(@Param('id') id: string) {
     return this.languagesService.findOne(id);
   }
-
   @Put(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'language'])
   @ApiOperation({ summary: 'Update language details' })
@@ -88,21 +103,11 @@ export class LanguagesController {
     return this.languagesService.update(id, dto);
   }
 
-  @Put('bulk-status')
-  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.UPDATE, 'language'])
-  @ApiOperation({ summary: 'Bulk update language status' })
-  @ApiBody({ type: BulkLanguageStatusDto })
-  @ApiResponse({ status: 200, description: 'Languages status updated successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  bulkUpdateStatus(@Body() dto: BulkLanguageStatusDto) {
-    console.log('Controller - Bulk update request received:', dto);
-    return this.languagesService.bulkUpdateStatus(dto);
-  }
+ 
 
   @Put('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'language'])
   @ApiOperation({ summary: 'Update language status' })
@@ -117,6 +122,7 @@ export class LanguagesController {
 
   @Delete('delete/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.DELETE, 'language'])
   @ApiOperation({ summary: 'Delete language' })

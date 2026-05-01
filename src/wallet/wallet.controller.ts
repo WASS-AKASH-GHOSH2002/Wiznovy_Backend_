@@ -68,4 +68,11 @@ findOneTutor(@CurrentUser() user: Account) {
   return this.walletService.getTutorWalletBalance(user.id);
 
 }
+
+  @Get('tutor/pending-earnings')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.TUTOR)
+  getTutorPendingEarnings(@CurrentUser() user: Account) {
+    return this.walletService.getTutorPendingEarnings(user.id);
+  }
 }

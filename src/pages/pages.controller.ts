@@ -10,7 +10,10 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import {  UpdatePageDto, PagePaginationDto } from './dto/page.dto';
 import { CreatePageDto } from './dto/create-page.dto';
 import { PagesService } from './pages.service';
-import { UserRole, FileSizeLimit } from 'src/enum';
+import { UserRole, FileSizeLimit, PermissionAction } from 'src/enum';
+import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
+import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @ApiTags('Pages')
 @ApiBearerAuth('JWT-auth')
@@ -36,8 +39,10 @@ export class PagesController {
   constructor(private readonly pagesService: PagesService) { }
 
   @Post()
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.CREATE, 'page'])
   @UseInterceptors(FileInterceptor('file', PagesController.getStorageConfig()))
   @ApiOperation({ summary: 'Create new page' })
   @ApiConsumes('multipart/form-data')
@@ -76,12 +81,13 @@ export class PagesController {
 
   @Get('list')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+   @CheckPermissions([PermissionAction.READ, 'page'])
   @ApiOperation({ summary: 'Get paginated page list' })
   @ApiQuery({ name: 'limit', type: Number, required: true, example: 20 })
   @ApiQuery({ name: 'offset', type: Number, required: true, example: 0 })
   @ApiQuery({ name: 'keyword', type: String, required: false })
-
   @ApiQuery({ name: 'pageType', type: String, required: false })
   @ApiResponse({ status: 200, description: 'Returns paginated page list' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -109,8 +115,10 @@ export class PagesController {
   }
 
   @Put('update/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+   @CheckPermissions([PermissionAction.UPDATE, 'page'])
   @UseInterceptors(FileInterceptor('file', PagesController.getStorageConfig()))
   @ApiOperation({ summary: 'Update page image' })
   @ApiConsumes('multipart/form-data')
@@ -147,8 +155,10 @@ export class PagesController {
   }
 
   @Patch('update-details/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'page'])
   @ApiOperation({ summary: 'Update page details' })
   @ApiParam({ name: 'id', type: Number, example: 1 })
   @ApiBody({ type: UpdatePageDto })
@@ -160,8 +170,10 @@ export class PagesController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard)
+    @AdminProtected()
+   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'page'])
   @ApiOperation({ summary: 'Delete page' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.pagesService.remove(id);

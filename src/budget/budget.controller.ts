@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, Put } from '@nestjs/common';
 import { BudgetService } from './budget.service';
-import { CreateBudgetDto, BudgetPaginationDto, BudgetStatusDto, UpdateBudgetDto } from './dto/create-budget.dto';
+import { CreateBudgetDto, BudgetPaginationDto, BudgetStatusDto, BulkBudgetStatusDto, UpdateBudgetDto } from './dto/create-budget.dto';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { AuthGuard } from '@nestjs/passport';
 import { DefaultStatus, PermissionAction, UserRole } from 'src/enum';
@@ -16,6 +16,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @ApiTags('budget')
 @ApiBearerAuth('JWT-auth')
@@ -26,6 +27,7 @@ export class BudgetController {
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @AdminProtected()
   @CheckPermissions([PermissionAction.CREATE, 'budget'])
   @ApiOperation({ summary: 'Create new budget' })
   @ApiBody({ type: CreateBudgetDto })
@@ -76,6 +78,7 @@ export class BudgetController {
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @AdminProtected()
   @CheckPermissions([PermissionAction.UPDATE, 'budget'])
   @ApiOperation({ summary: 'Update budget details' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
@@ -90,6 +93,7 @@ export class BudgetController {
   @Put('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @AdminProtected()
   @CheckPermissions([PermissionAction.UPDATE, 'budget'])
   @ApiOperation({ summary: 'Update budget status' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
@@ -101,9 +105,23 @@ export class BudgetController {
     return this.budgetService.updateStatus(id, dto);
   }
 
+  @Put('bulk-status')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @AdminProtected()
+  @CheckPermissions([PermissionAction.UPDATE, 'budget'])
+  @ApiOperation({ summary: 'Bulk update budget status' })
+  @ApiBody({ type: BulkBudgetStatusDto })
+  @ApiResponse({ status: 200, description: 'Budgets status updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  bulkUpdateStatus(@Body() dto: BulkBudgetStatusDto) {
+    return this.budgetService.bulkUpdateStatus(dto);
+  }
+
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @AdminProtected()
   @CheckPermissions([PermissionAction.DELETE, 'budget'])
   @ApiOperation({ summary: 'Delete budget' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })

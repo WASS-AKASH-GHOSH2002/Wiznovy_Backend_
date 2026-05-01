@@ -10,7 +10,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { DefaultStatus } from 'src/enum';
+import { DefaultStatus, ContactUsType } from 'src/enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateContactUsCategoryDto {
@@ -19,6 +19,11 @@ export class CreateContactUsCategoryDto {
   @IsString()
   @MaxLength(255)
   title: string;
+
+  @ApiProperty({ enum: ContactUsType, example: ContactUsType.USER })
+  @IsNotEmpty()
+  @IsEnum(ContactUsType)
+  type: ContactUsType;
 }
 
 export class ContactUsCategoryStatusDto {
@@ -33,7 +38,7 @@ export class ContactUsCategoryPaginationDto {
   @IsNotEmpty()
   @Type(() => Number)
   @IsNumber()
-  @Min(10)
+  @Min(5)
   @Max(100)
   limit: number;
 
@@ -55,6 +60,18 @@ export class ContactUsCategoryPaginationDto {
   @IsOptional()
   @IsEnum(DefaultStatus)
   status: DefaultStatus;
+
+  @ApiPropertyOptional({ enum: ContactUsType })
+  @IsOptional()
+  @IsEnum(ContactUsType)
+  type: ContactUsType;
+}
+
+export class ContactUsCategoryByTypeDto {
+  @ApiPropertyOptional({ enum: ContactUsType })
+  @IsOptional()
+  @IsEnum(ContactUsType)
+  type?: ContactUsType;
 }
 
 export class BulkContactUsCategoryStatusDto {

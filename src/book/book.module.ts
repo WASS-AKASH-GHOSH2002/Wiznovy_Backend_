@@ -8,11 +8,13 @@ import { Subject } from 'src/subjects/entities/subject.entity';
 import { Language } from 'src/languages/entities/language.entity';
 import { SavedBook } from 'src/saved-books/entities/saved-book.entity';
 import { AuthModule } from 'src/auth/auth.module';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Book, BookImage, Subject, Language, SavedBook]),
-    AuthModule
+    AuthModule,
+    NotificationsModule,
   ],
   controllers: [BookController],
   providers: [BookService],

@@ -1,11 +1,11 @@
 import { Type } from 'class-transformer';
-import {
-  IsString,
+import { IsArray, IsString,
   MinLength,
   MaxLength,
   IsOptional,
   IsEnum,
   IsDate,
+  IsNotEmpty,
 } from 'class-validator';
 import { Gender, Level } from 'src/enum';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -32,7 +32,7 @@ export class UpdateTutorDetailDto {
   @ApiPropertyOptional({ enum: Level, example: Level.EXPERTS })
   @IsOptional()
   @IsEnum(Level)
-  Level: Level;
+  expertiseLevel: Level;
 
   @ApiPropertyOptional({ example: '123 Main St, City, Country', maxLength: 5000 })
   @IsOptional()
@@ -40,8 +40,14 @@ export class UpdateTutorDetailDto {
   @MaxLength(5000)
   address: string;
 
+  // @IsNotEmpty({ message: 'Hourly rate is required' })
    @IsOptional()
   hourlyRate: number;
+
+//  @IsNotEmpty({ message: 'Hourly rate is required' })
+
+  @IsOptional()
+  trailRate: number
 
   @ApiPropertyOptional({ example: 'Experienced tutor with 5+ years of teaching', maxLength: 1000 })
   @IsOptional()
@@ -63,6 +69,12 @@ export class UpdateTutorDetailDto {
   @IsOptional()
   @IsString()
   subjectId: string;
+
+  @ApiPropertyOptional({ example: ['uuid1', 'uuid2'], type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  subjectIds: string[];
 
   @ApiPropertyOptional({ example: '1234567890abcdef' })
   @IsOptional()

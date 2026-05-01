@@ -17,6 +17,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @ApiTags('goal')
 @ApiBearerAuth('JWT-auth')
@@ -26,6 +27,7 @@ export class GoalController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.CREATE, 'goal'])
   @ApiOperation({ summary: 'Create new goal' })
@@ -40,6 +42,7 @@ export class GoalController {
 
   @Get('list')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.READ, 'goal'])
   @ApiOperation({ summary: 'Get paginated goal list' })
@@ -76,6 +79,7 @@ export class GoalController {
 
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'topic'])
   @ApiOperation({ summary: 'Update goal details' })
@@ -90,6 +94,7 @@ export class GoalController {
 
   @Put('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'topic'])
   @ApiOperation({ summary: 'Update goal status' })
@@ -101,9 +106,23 @@ export class GoalController {
   updateStatus(@Param('id') id: string, @Body() dto: GoalStatusDto) {
     return this.goalService.updateStatus(id, dto);
   }
+   @Put('bulk-status')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'goal'])
+  @ApiOperation({ summary: 'Bulk update goal status' })
+  @ApiBody({ type: BulkGoalStatusDto })
+  @ApiResponse({ status: 200, description: 'Goals status updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  bulkUpdateStatus(@Body() dto: BulkGoalStatusDto) {
+    return this.goalService.bulkUpdateStatus(dto);
+  }
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.DELETE, 'topic'])
   @ApiOperation({ summary: 'Delete goal' })
@@ -115,16 +134,5 @@ export class GoalController {
     return this.goalService.remove(id);
   }
 
-  @Put('bulk-status')
-  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.UPDATE, 'goal'])
-  @ApiOperation({ summary: 'Bulk update goal status' })
-  @ApiBody({ type: BulkGoalStatusDto })
-  @ApiResponse({ status: 200, description: 'Goals status updated successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
-  bulkUpdateStatus(@Body() dto: BulkGoalStatusDto) {
-    return this.goalService.bulkUpdateStatus(dto);
-  }
+ 
 }

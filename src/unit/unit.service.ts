@@ -251,6 +251,37 @@ export class UnitService {
     return this.repo.save(result);
   }
 
+  async permanentDelete(id: string) {
+    const unit = await this.repo.findOne({
+      where: { id },
+      relations: ['videoLectures', 'videoLectures.studyMaterials', 'studyMaterials'],
+    });
+    if (!unit) throw new NotFoundException('Unit not found!');
+
+    const filesToDelete: string[] = [];
+
+    if (unit.imgPath) filesToDelete.push(unit.imgPath);
+
+    for (const video of unit.videoLectures ?? []) {
+      if (video.videoPath) filesToDelete.push(video.videoPath);
+      if (video.thumbnailPath) filesToDelete.push(video.thumbnailPath);
+      for (const sm of video.studyMaterials ?? []) {
+        if (sm.filePath) filesToDelete.push(sm.filePath);
+      }
+    }
+
+    for (const sm of unit.studyMaterials ?? []) {
+      if (sm.filePath) filesToDelete.push(sm.filePath);
+    }
+
+    await Promise.allSettled(
+      filesToDelete.map((p) => unlink(join(__dirname, '..', '..', p))),
+    );
+
+    await this.repo.remove(unit);
+    return { message: 'Unit permanently deleted' };
+  }
+
   async image(image: string, result: Unit) {
     if (result.imgPath) {
       const oldPath = join(__dirname, '..', '..', result.imgPath);

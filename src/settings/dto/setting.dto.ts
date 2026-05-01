@@ -48,6 +48,11 @@ export class SettingDto {
   @MaxLength(100)
   companyName: string;
 
+    @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  companyYear: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(255)

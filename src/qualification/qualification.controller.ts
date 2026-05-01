@@ -17,6 +17,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @ApiTags('qualification')
 @ApiBearerAuth('JWT-auth')
@@ -26,6 +27,7 @@ export class QualificationController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+   @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.CREATE, 'qualification'])
   @ApiOperation({ summary: 'Create new qualification' })
@@ -76,6 +78,7 @@ export class QualificationController {
 
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'qualification'])
   @ApiOperation({ summary: 'Update qualification details' })
@@ -90,6 +93,7 @@ export class QualificationController {
 
   @Put('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+   @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'qualification'])
   @ApiOperation({ summary: 'Update qualification status' })
@@ -104,6 +108,7 @@ export class QualificationController {
 
   @Put('bulk-status')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'qualification'])
   @ApiOperation({ summary: 'Bulk update qualification status' })
@@ -116,6 +121,7 @@ export class QualificationController {
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.DELETE, 'qualification'])
   @ApiOperation({ summary: 'Delete qualification' })

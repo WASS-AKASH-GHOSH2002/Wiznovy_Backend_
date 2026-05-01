@@ -22,6 +22,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @ApiTags('banner')
 @ApiBearerAuth('JWT-auth')
@@ -50,6 +51,7 @@ export class BannerController {
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+   @AdminProtected()
   @CheckPermissions([PermissionAction.CREATE, 'banner'])
   @UseInterceptors(FileInterceptor('file', BannerController.getStorageConfig()))
   @ApiOperation({ summary: 'Create new banner' })
@@ -119,6 +121,7 @@ export class BannerController {
   @Put('image/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @AdminProtected()
   @CheckPermissions([PermissionAction.UPDATE, 'banner'])
   @UseInterceptors(FileInterceptor('file', BannerController.getStorageConfig()))
   @ApiOperation({ summary: 'Update banner image' })
@@ -157,7 +160,9 @@ export class BannerController {
 
   @Put('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+    @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+
   @CheckPermissions([PermissionAction.UPDATE, 'banner'])
   @ApiOperation({ summary: 'Update banner status' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
@@ -172,6 +177,7 @@ export class BannerController {
   @Put('type/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+   @AdminProtected()
   @CheckPermissions([PermissionAction.UPDATE, 'banner'])
   @ApiOperation({ summary: 'Update banner type' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })

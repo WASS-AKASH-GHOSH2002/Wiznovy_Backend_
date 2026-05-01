@@ -53,6 +53,14 @@ export class UserDetailsController {
 
   constructor(private readonly userDetailsService: UserDetailsService) {}
 
+  @Patch('location')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.USER)
+  @ApiOperation({ summary: 'Update user location (lat, lng, timezone)' })
+  updateLocation(@Body() dto: { lat: number; lng: number; timezone: string }, @CurrentUser() user: Account) {
+    return this.userDetailsService.updateLocation(user.id, dto);
+  }
+
   @Patch('update')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.USER)

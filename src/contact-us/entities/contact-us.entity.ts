@@ -1,5 +1,6 @@
 import { Account } from 'src/account/entities/account.entity';
 import { ContactUsCategory } from 'src/contact-us-category/entities/contact-us-category.entity';
+import { ContactUsStatus } from 'src/enum';
 import {
   Column,
   CreateDateColumn,
@@ -37,6 +38,8 @@ export class ContactUs {
   @Column({ type: 'varchar', length: 100, nullable: true })
   message: string;
 
+  @Column({ type: 'enum', enum: ContactUsStatus, default: ContactUsStatus.OPEN })
+  status: ContactUsStatus;
 
   @CreateDateColumn()
   createdAt: Date;

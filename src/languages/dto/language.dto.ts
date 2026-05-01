@@ -5,6 +5,8 @@ import {
   IsOptional,
   IsNumber,
   IsString,
+  IsArray,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -38,7 +40,8 @@ export class LanguageStatusDto {
 
 export class BulkLanguageStatusDto {
   @IsNotEmpty()
-  @IsString({ each: true })
+  @IsArray()
+  @IsUUID('all', { each: true })
   ids: string[];
 
   @IsNotEmpty()

@@ -1,6 +1,7 @@
 import { Account } from 'src/account/entities/account.entity';
 import { ZoomMeeting } from 'src/zoom/entities/zoom.entity';
 import { SessionStatus, SessionType } from 'src/enum';
+import { decimalTransformer } from 'src/utils/decimal.transformer';
 import {
   Column,
   CreateDateColumn,
@@ -24,7 +25,7 @@ export class Session {
   tutorId: string;
 
   @Column({ type: 'date' })
-  sessionDate: Date;
+  sessionDate: string;
 
   @Column({ type: 'time' })
   startTime: string;
@@ -35,7 +36,7 @@ export class Session {
   @Column({ type: 'int' })
   duration: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, transformer: decimalTransformer })
   amount: number;
 
   @Column({ type: 'uuid', nullable: true })
@@ -61,6 +62,30 @@ export class Session {
 
   @Column({ type: 'uuid', nullable: true })
   cancelledBy: string;
+
+  @Column({ type: 'int', default: 0 })
+  rescheduleCount: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, transformer: decimalTransformer })
+  platformCommission: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, transformer: decimalTransformer })
+  tutorEarnings: number;
+
+  @Column({ type: 'text', nullable: true })
+  cancellationReason: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  cancelledByRole: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, transformer: decimalTransformer })
+  refundAmount: number;
+
+  @Column({ type: 'boolean', default: false })
+  twentyFourHourReminderSent: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  tenMinReminderSent: boolean;
 
   @ManyToOne(() => Account, { onDelete: 'CASCADE' })
   user: Account;

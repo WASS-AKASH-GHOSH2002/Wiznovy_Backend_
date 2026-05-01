@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { TutorAvailabilityService } from './tutor-availability.service';
-import { CreateAvailabilityDto, AvailabilityPaginationDto, } from './dto/create-availability.dto';
+import { CreateAvailabilityDto, AvailabilityPaginationDto, BlockSlotDto } from './dto/create-availability.dto';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { Account } from 'src/account/entities/account.entity';
 import { UserRole } from 'src/enum';
@@ -23,7 +23,7 @@ export class TutorAvailabilityController {
   @Post('block-slot')
   @UseGuards(RolesGuard)
   @Roles(UserRole.TUTOR)
-  blockSlot(@Body() dto: any, @CurrentUser() user: Account) {
+  blockSlot(@Body() dto: BlockSlotDto, @CurrentUser() user: Account) {
     return this.availabilityService.blockSlot(dto, user.id);
   }
 
@@ -32,6 +32,13 @@ export class TutorAvailabilityController {
   @Roles(UserRole.TUTOR)
   findMyBlocks(@CurrentUser() user: Account) {
     return this.availabilityService.findTutorBlocks(user.id);
+  }
+
+  @Delete('block-slot/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.TUTOR)
+  unblockSlot(@Param('id') id: string, @CurrentUser() user: Account) {
+    return this.availabilityService.unblockSlot(id, user.id);
   }
 
   @Get('my-availability')

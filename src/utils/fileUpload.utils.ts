@@ -1,10 +1,13 @@
-import { NotAcceptableException } from '@nestjs/common';
+import { NotAcceptableException, HttpStatus } from '@nestjs/common';
+import { CustomException } from '../shared/exceptions/custom.exception';
+import { MESSAGE_CODES } from '../shared/constants/message-codes';
+import { MessageType } from '../shared/constants/message-type.enum';
 import axios from 'axios';
 
 export const imageFileFilter = (req, file, callback) => {
   if (!file.originalname.match(/\.(jpg|jpeg|png|webp)$/)) {
     return callback(
-      new NotAcceptableException('Only jpg, jpeg, png, webp image files are allowed!'),
+      new CustomException(MESSAGE_CODES.VALIDATION_INVALID_FILE_TYPE, MessageType.ERROR, HttpStatus.BAD_REQUEST),
       false,
     );
   }
@@ -12,22 +15,30 @@ export const imageFileFilter = (req, file, callback) => {
 };
 
 export const courseImageFileFilter = (req, file, callback) => {
- 
   if (!file.originalname.match(/\.(jpg|jpeg|png|webp)$/)) {
     return callback(
-      new NotAcceptableException('Only jpg, jpeg, png, webp image files are allowed for courses!'),
+      new CustomException(MESSAGE_CODES.VALIDATION_INVALID_FILE_TYPE, MessageType.ERROR, HttpStatus.BAD_REQUEST),
       false,
     );
   }
   
-
   if (file.size && file.size > 5 * 1024 * 1024) {
     return callback(
-      new NotAcceptableException('File size must be less than 5MB!'),
+      new CustomException(MESSAGE_CODES.VALIDATION_FILE_TOO_LARGE, MessageType.ERROR, HttpStatus.BAD_REQUEST),
       false,
     );
   }
   
+  callback(null, true);
+};
+
+export const documentFileFilter = (req, file, callback) => {
+  if (!file.originalname.match(/\.(jpg|jpeg|png|pdf)$/)) {
+    return callback(
+      new CustomException(MESSAGE_CODES.VALIDATION_INVALID_DOCUMENT_TYPE, MessageType.ERROR, HttpStatus.BAD_REQUEST),
+      false,
+    );
+  }
   callback(null, true);
 };
 

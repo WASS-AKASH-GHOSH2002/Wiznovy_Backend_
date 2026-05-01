@@ -103,7 +103,6 @@ private async searchCourses(dto: GlobalSearchDto, trimmedKeyword: string, lowerK
       'course.id',
       'course.name',
       'course.description',
-      'course.imageUrl',
       'course.thumbnailUrl',
       'course.price',
       'course.discountPrice',

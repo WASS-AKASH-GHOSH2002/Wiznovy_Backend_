@@ -15,7 +15,7 @@ import { Account } from 'src/account/entities/account.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { PermissionAction, UserRole } from 'src/enum';
-import { NotificationDto } from './dto/notification.dto';
+import { NotificationDto, NotificationFilterDto } from './dto/notification.dto';
 import { NotificationsService } from './notifications.service';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
@@ -89,11 +89,25 @@ export class NotificationsController {
 
   @Get()
   @UseGuards(AuthGuard('jwt'))
-  @Roles(UserRole.USER)
+  @Roles(UserRole.USER,UserRole.TUTOR)
   findAll(@Query() query, @CurrentUser() user: Account) {
     const limit = query.limit || 10;
     const offset = query.offset || 0;
     return this.notificationsService.findAll(limit, offset, user.id);
+  }
+
+  @Get('admin')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'notification'])
+  getAdminNotifications(@Query() dto: NotificationFilterDto, @CurrentUser() user: Account) {
+    return this.notificationsService.getAdminNotifications(user.id, {
+      limit: dto.limit || 10,
+      offset: dto.offset || 0,
+      fromDate: dto.fromDate,
+      toDate: dto.toDate,
+      read: dto.read,
+    });
   }
 
   @Get('list')
@@ -106,6 +120,26 @@ export class NotificationsController {
     return this.notificationsService.find(limit, offset);
   }
 
+  @Patch('mark-all-read')
+  @UseGuards(AuthGuard('jwt'))
+  markAllAsRead(@CurrentUser() user: Account) {
+    return this.notificationsService.markAllAsRead(user.id);
+  }
+
+  @Get('unread-count')
+  @UseGuards(AuthGuard('jwt'))
+  getUnreadCount(@CurrentUser() user: Account) {
+    return this.notificationsService.getUnreadCount(user.id);
+  }
+
+  @Get(':id')
+  @UseGuards(AuthGuard('jwt'))
+  findOne(@Param('id') id: string, @CurrentUser() user: Account) {
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) throw new NotAcceptableException('Invalid notification id');
+    return this.notificationsService.findOne(numId, user.id);
+  }
+
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'))
   update(
@@ -113,32 +147,18 @@ export class NotificationsController {
     @Body('status') status: boolean,
     @CurrentUser() user: Account,
   ) {
-    return this.notificationsService.update(+id, user.id, status);
-  }
-
-  @Patch('mark-all-read')
-  @UseGuards(AuthGuard('jwt'))
-  @Roles(UserRole.USER)
-  markAllAsRead(@CurrentUser() user: Account) {
-    return this.notificationsService.markAllAsRead(user.id);
-  }
-
-  @Get('unread-count')
-  @UseGuards(AuthGuard('jwt'))
-  @Roles(UserRole.USER)
-  getUnreadCount(@CurrentUser() user: Account) {
-    return this.notificationsService.getUnreadCount(user.id);
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) throw new NotAcceptableException('Invalid notification id');
+    return this.notificationsService.update(numId, user.id, status);
   }
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'))
-  @Roles(UserRole.USER)
   deleteNotification(@Param('id') id: string, @CurrentUser() user: Account) {
-    return this.notificationsService.deleteNotification(+id, user.id);
+    const numId = parseInt(id, 10);
+    if (isNaN(numId)) throw new NotAcceptableException('Invalid notification id');
+    return this.notificationsService.deleteNotification(numId, user.id);
   }
-
-
-
   @Get('real-time')
   @UseGuards(AuthGuard('jwt'))
   @Roles(UserRole.USER)

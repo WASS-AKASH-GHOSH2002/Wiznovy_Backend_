@@ -2,6 +2,7 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateCol
 import { Account } from 'src/account/entities/account.entity';
 import { Wallet } from 'src/wallet/entities/wallet.entity';
 import { TransactionType, TransactionStatus } from 'src/enum';
+import { decimalTransformer } from 'src/utils/decimal.transformer';
 
 @Entity('wallet_transactions')
 export class WalletTransaction {
@@ -14,7 +15,7 @@ export class WalletTransaction {
   @Column({ type: 'uuid' })
   accountId: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'decimal', precision: 10, scale: 2, transformer: decimalTransformer })
   amount: number;
 
   @Column({ type: 'enum', enum: TransactionType })
@@ -23,14 +24,23 @@ export class WalletTransaction {
   @Column({ type: 'enum', enum: TransactionStatus, default: TransactionStatus.PENDING })
   status: TransactionStatus;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, transformer: decimalTransformer })
   balanceBefore: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, transformer: decimalTransformer })
   balanceAfter: number;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   paymentIntentId: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  description: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  referenceId: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  releaseDate: Date;
 
   @CreateDateColumn()
   createdAt: Date;

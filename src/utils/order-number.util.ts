@@ -19,4 +19,13 @@ export class OrderNumberGenerator {
     
     return `WIZ-${year}${month}${day}-${hours}${minutes}${seconds}-${randomSuffix}`;
   }
+
+  /**
+   * Generates a unique transaction ID for every payment
+   * Format: TXN-<METHOD>-<timestamp>-<random6>
+   */
+  static generateTransactionId(method: 'STRIPE' | 'WALLET'): string {
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `TXN-${method}-${Date.now()}-${random}`;
+  }
 }

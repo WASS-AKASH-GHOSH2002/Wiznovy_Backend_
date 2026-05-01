@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { PaymentMethod, PayoutStatus } from 'src/enum';
+import { ApprovePaymentMethod, PaymentMethod, PayoutStatus } from 'src/enum';
 
 export class CreatePayoutDto {
   @ApiProperty({ example: 100.5 })
@@ -63,10 +63,10 @@ export class ApprovePayoutDto {
   @IsString()
   transactionId?: string;
 
-  @ApiProperty({ enum: PaymentMethod })
+  @ApiProperty({ enum: ApprovePaymentMethod })
   @IsOptional()
-  @IsEnum(PaymentMethod)
-  paymentMethod?: PaymentMethod;
+  @IsEnum(ApprovePaymentMethod)
+  paymentMethod?: ApprovePaymentMethod;
 
   @ApiProperty({ example: '2024-01-15T10:30:00Z' })
   @IsOptional()

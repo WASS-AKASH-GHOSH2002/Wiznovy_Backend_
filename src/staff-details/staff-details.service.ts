@@ -50,23 +50,24 @@ export class StaffDetailsService {
     }
   }
 
+  async updateByAdmin(accountId: string, dto: UpdateStaffDetailDto, adminId: string) {
+    const user = await this.repo.findOne({ where: { accountId } });
+    if (!user) {
+      throw new NotFoundException('Staff account not found!');
+    }
+    dto.updatedBy = adminId;
+    this.delStaffDetail(accountId);
+    const obj = Object.assign(user, dto);
+    return this.repo.save(obj);
+  }
+
   async update(accountId: string, dto: UpdateStaffDetailDto) {
-    const user = await this.repo.findOne({
-      where: { accountId: accountId },
-    });
+    const user = await this.repo.findOne({ where: { accountId } });
     if (!user) {
       throw new NotFoundException('Account not found!');
     }
-    try {
-      this.delStaffDetail(user.accountId);
-      const obj = Object.assign(user, dto);
-      return this.repo.save(obj);
-    } catch (error) {
-      console.error('Error updating staff detail:', error);
-      throw new NotAcceptableException(
-        'Either duplicate email/pan number/aadhar number or invalid details!',
-      );
-    }
+    Object.assign(user, dto);
+    return this.repo.save(user);
   }
 
   async findOne(accountId: string) {
@@ -75,6 +76,31 @@ export class StaffDetailsService {
       throw new NotFoundException('User not found!');
     }
     return user;
+  }
+
+  async findByAccount(accountId: string) {
+    const staffDetail = await this.repo
+      .createQueryBuilder('staffDetail')
+      .leftJoinAndSelect('staffDetail.account', 'account')
+      .leftJoinAndSelect('staffDetail.designation', 'designation')
+      .select([
+        'staffDetail',
+        'account.id',
+        'account.email',
+        'account.phoneNumber',
+        'account.roles',
+        'account.status',
+        'account.createdAt',
+        'designation.id',
+        'designation.name',
+      ])
+      .where('staffDetail.accountId = :accountId', { accountId })
+      .getOne();
+
+    if (!staffDetail) {
+      throw new NotFoundException('Staff details not found!');
+    }
+    return staffDetail;
   }
 
   profile(id: string) {

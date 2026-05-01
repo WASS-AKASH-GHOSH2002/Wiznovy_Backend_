@@ -38,15 +38,64 @@ export class CreateSessionDto {
   @IsEnum(SessionType)
   sessionType: SessionType;
 
-  @ApiPropertyOptional({ enum: SessionDurationType, example: SessionDurationType.SHORT })
-  @IsOptional()
-  @IsEnum(SessionDurationType)
-  trialDuration?: SessionDurationType;
-
   @ApiPropertyOptional({ description: 'Payment method: COD or ONLINE', example: 'ONLINE' })
   @IsOptional()
   @IsString()
   paymentMethod: string;
+}
+
+export class BookRegularSessionDto {
+  @ApiProperty()
+  @IsNotEmpty()
+  @IsUUID()
+  tutorId: string;
+
+  @ApiProperty({ example: '2024-01-15' })
+  @IsNotEmpty()
+  @IsDateString()
+  sessionDate: string;
+
+  @ApiProperty({ example: '10:00' })
+  @IsNotEmpty()
+  @IsString()
+  startTime: string;
+
+  @ApiProperty({ example: '11:00' })
+  @IsNotEmpty()
+  @IsString()
+  endTime: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @ApiPropertyOptional({ description: 'Payment method: COD or ONLINE', example: 'ONLINE' })
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+}
+
+export class BookTrialSessionDto {
+  @ApiProperty()
+  @IsNotEmpty()
+  @IsUUID()
+  tutorId: string;
+
+  @ApiProperty({ example: '2024-01-15' })
+  @IsNotEmpty()
+  @IsDateString()
+  sessionDate: string;
+
+  @ApiProperty({ example: '10:00', description: 'Trial session is 25 minutes, end time is auto-calculated' })
+  @IsNotEmpty()
+  @IsString()
+  startTime: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
 export class SessionPaginationDto {
@@ -90,5 +139,14 @@ status: SessionStatus;
 @IsEnum(SessionType)
 sessionType: SessionType;
 
- 
+@ApiPropertyOptional({ description: 'Filter by account ID (user or tutor)' })
+@IsOptional()
+@IsUUID()
+accountId?: string;
+
+@ApiPropertyOptional({ description: 'Search by tutor name or student name' })
+@IsOptional()
+@IsString()
+keyword?: string;
+
 }

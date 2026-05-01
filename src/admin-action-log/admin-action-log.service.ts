@@ -6,6 +6,7 @@ import { Cache } from 'cache-manager';
 import { AdminActionLog } from './entities/admin-action-log.entity';
 import { AdminActionType,  } from 'src/enum';
 import { AdminActionLogQueryDto } from './dto/admin-action-log.dto';
+import { buildCsv, formatCsvDate, CsvColumn } from '../utils/csv.utils';
 
 @Injectable()
 export class AdminActionLogService {
@@ -72,12 +73,18 @@ export class AdminActionLogService {
   }
 
   async create(auditData: any) {
-    const log = this.logRepo.create(auditData);
-    return await this.logRepo.save(log);
+    try {
+      const log = this.logRepo.create(auditData);
+      const saved = await this.logRepo.save(log);
+      return saved;
+    } catch (error) {
+      console.error('❌ Failed to save admin log:', error.message);
+      throw error;
+    }
   }
 
   async findAll(query: AdminActionLogQueryDto) {
-    const { limit = 20, offset = 0, adminId, targetType, targetId, date } = query;
+    const { limit = 20, offset = 0, adminId, targetType, targetId, startDate, endDate } = query;
     
     const queryBuilder = this.logRepo.createQueryBuilder('log')
       .leftJoinAndSelect('log.admin', 'admin')
@@ -88,6 +95,7 @@ export class AdminActionLogService {
         'log.targetId',
         'log.targetType',
         'log.role',
+        'log.description',
         'log.oldData',
         'log.newData',
         'log.ipAddress',
@@ -110,12 +118,14 @@ export class AdminActionLogService {
       queryBuilder.andWhere('log.targetId = :targetId', { targetId });
     }
 
-    if (date) {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-      queryBuilder.andWhere('log.createdAt BETWEEN :startOfDay AND :endOfDay', { startOfDay, endOfDay });
+    if (startDate) {
+      queryBuilder.andWhere('log.createdAt >= :startDate', { startDate: new Date(startDate) });
+    }
+
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      queryBuilder.andWhere('log.createdAt <= :endDate', { endDate: end });
     }
 
     const [result, total] = await queryBuilder
@@ -125,5 +135,47 @@ export class AdminActionLogService {
       .getManyAndCount();
        
     return { result, total};
+  }
+
+  async exportCsv(query: AdminActionLogQueryDto): Promise<string> {
+    const { adminId, targetType, targetId, startDate, endDate } = query;
+
+    const queryBuilder = this.logRepo.createQueryBuilder('log')
+      .leftJoin('log.admin', 'admin')
+      .select([
+        'log.id',
+        'log.actionType',
+        'log.targetType',
+        'log.description',
+        'log.ipAddress',
+        'log.role',
+        'log.createdAt',
+        'admin.email',
+        'admin.roles',
+      ]);
+
+    if (adminId) queryBuilder.andWhere('log.adminId = :adminId', { adminId });
+    if (targetType) queryBuilder.andWhere('log.targetType = :targetType', { targetType });
+    if (targetId) queryBuilder.andWhere('log.targetId = :targetId', { targetId });
+    if (startDate) queryBuilder.andWhere('log.createdAt >= :startDate', { startDate: new Date(startDate) });
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      queryBuilder.andWhere('log.createdAt <= :endDate', { endDate: end });
+    }
+
+    const records = await queryBuilder.orderBy('log.createdAt', 'DESC').getMany();
+
+    const columns: CsvColumn[] = [
+      { header: 'Admin Email',  value: (r) => r.admin?.email ?? '' },
+      { header: 'Role',         value: (r) => r.role ?? r.admin?.roles ?? '' },
+      { header: 'Action',       value: (r) => r.actionType },
+      { header: 'Target Type',  value: (r) => r.targetType ?? '' },
+      { header: 'Description',  value: (r) => r.description ?? '' },
+      { header: 'IP',           value: (r) => r.ipAddress ?? '' },
+      { header: 'Date',         value: (r) => formatCsvDate(r.createdAt) },
+    ];
+
+    return buildCsv(columns, records);
   }
 }

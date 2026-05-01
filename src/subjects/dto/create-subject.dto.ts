@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
+import { IsArray, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength } from "class-validator";
 import { DefaultStatus } from "src/enum";
 
 export class CreateSubjectDto {
@@ -18,6 +18,19 @@ export class CreateSubjectDto {
 status:DefaultStatus;
 
 
+}
+
+export class TutorSubjectRequestDto {
+  @ApiProperty({ example: ['uuid1', 'uuid2'], type: [String] })
+  @IsArray()
+  @IsUUID('all', { each: true })
+  subjectIds: string[];
+}
+
+export class ApproveTutorSubjectDto {
+  @ApiProperty({ enum: [DefaultStatus.ACTIVE, DefaultStatus.DEACTIVE] })
+  @IsEnum(DefaultStatus)
+  status: DefaultStatus;
 }
 
 export class SubjectPaginationDto {
@@ -47,6 +60,11 @@ export class SubjectPaginationDto {
   @IsOptional()
   @IsEnum(DefaultStatus)
   status: DefaultStatus;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @Type(() => Boolean)
+  topSubject: boolean;
 
 }
 

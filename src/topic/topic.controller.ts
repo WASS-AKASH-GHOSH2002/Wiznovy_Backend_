@@ -33,6 +33,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @ApiTags('topic')
 @ApiBearerAuth('JWT-auth')
@@ -42,6 +43,7 @@ export class TopicController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.CREATE, 'topic'])
   @ApiOperation({ summary: 'Create new topic' })
@@ -56,6 +58,7 @@ export class TopicController {
 
   @Get('list')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.READ, 'topic'])
   @ApiOperation({ summary: 'Get paginated topic list' })
@@ -92,6 +95,7 @@ export class TopicController {
 
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'topic'])
   @ApiOperation({ summary: 'Update topic details' })
@@ -106,6 +110,7 @@ export class TopicController {
 
   @Put('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'topic'])
   @ApiOperation({ summary: 'Update topic status' })
@@ -117,9 +122,24 @@ export class TopicController {
   updateStatus(@Param('id') id: string, @Body() dto: TopicStatusDto) {
     return this.topicService.updateStatus(id, dto);
   }
+  
+  @Put('bulk-status')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'topic'])
+  @ApiOperation({ summary: 'Bulk update topic status' })
+  @ApiBody({ type: BulkTopicStatusDto })
+  @ApiResponse({ status: 200, description: 'Topics status updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  bulkUpdateStatus(@Body() dto: BulkTopicStatusDto) {
+    return this.topicService.bulkUpdateStatus(dto);
+  }
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.DELETE, 'topic'])
   @ApiOperation({ summary: 'Delete topic' })
@@ -131,16 +151,5 @@ export class TopicController {
     return this.topicService.remove(id);
   }
 
-  @Put('bulk-status')
-  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.UPDATE, 'topic'])
-  @ApiOperation({ summary: 'Bulk update topic status' })
-  @ApiBody({ type: BulkTopicStatusDto })
-  @ApiResponse({ status: 200, description: 'Topics status updated successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
-  bulkUpdateStatus(@Body() dto: BulkTopicStatusDto) {
-    return this.topicService.bulkUpdateStatus(dto);
-  }
+
 }

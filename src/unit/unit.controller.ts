@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body,  Param, UseGuards, Query, Put, UseInterceptors, UploadedFile, UploadedFiles, ParseFilePipe, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Delete, Param, UseGuards, Query, Put, UseInterceptors, UploadedFile, UploadedFiles, ParseFilePipe, UsePipes, ValidationPipe } from '@nestjs/common';
 import { UnitService } from './unit.service';
 import { CreateUnitDto, UpdateUnitDto, UnitPaginationDto } from './dto/create-unit.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -12,6 +12,7 @@ import { extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @Controller('unit')
 export class UnitController {
@@ -52,8 +53,9 @@ export class UnitController {
 
   @Post('admin')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF,UserRole.TUTOR)
-  //@CheckPermissions([PermissionAction.CREATE, 'unit'])
+  @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF,)
+  @CheckPermissions([PermissionAction.CREATE, 'unit'])
   @UsePipes(new ValidationPipe({ transform: true }))
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -119,6 +121,7 @@ export class UnitController {
 
     @Put('admin/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard )
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'unit'])
   adminupdate(@Param('id') id: string, @Body() dto: UpdateUnitDto) {
@@ -144,8 +147,9 @@ export class UnitController {
     const unit = await this.unitService.findOne(id);
     return this.unitService.image(file.path, unit);
   }
-  @Put('admin/imge/:id')
+  @Put('admin/image/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'unit'])
   @UseInterceptors(FileInterceptor('file', UnitController.getStorageConfig()))
@@ -168,10 +172,27 @@ export class UnitController {
 
   
 
+  @Delete(':id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.TUTOR)
+  permanentDelete(@Param('id') id: string) {
+    return this.unitService.permanentDelete(id);
+  }
+
+  @Delete('admin/:id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.DELETE, 'unit'])
+  adminPermanentDelete(@Param('id') id: string) {
+    return this.unitService.permanentDelete(id);
+  }
+
   @Put('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF,UserRole.TUTOR)
- // @CheckPermissions([PermissionAction.UPDATE, 'unit'])
+  @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF,)
+   @CheckPermissions([PermissionAction.UPDATE, 'unit'])
   status(@Param('id') id: string, @Body() dto: UpdateUnitDto) {
     return this.unitService.update(id, dto);
   }

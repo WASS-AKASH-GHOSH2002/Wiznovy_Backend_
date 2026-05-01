@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, } from 'typeorm';
 import { LoginHistory } from './entities/login-history.entity';
 import { LoginHistoryFilterDto } from './dto/login-history.dto';
+import { CommonPaginationDto } from 'src/common/dto/common-pagination.dto';
 
 @Injectable()
 export class LoginHistoryService {
@@ -11,10 +12,11 @@ export class LoginHistoryService {
         private readonly loginHistoryRepository: Repository<LoginHistory>,
     ) { }
 
-    async recordLogin(accountId: string, ip: string) {
+    async recordLogin(accountId: string, ip: string, userAgent?: string) {
         await this.loginHistoryRepository.save({
             accountId,
             ip,
+            userAgent: userAgent || null,
             loginTime: new Date(),
         });
     }
@@ -41,6 +43,7 @@ export class LoginHistoryService {
             .select([
                 'loginHistory.id',
                 'loginHistory.ip',
+                'loginHistory.userAgent',
                 'loginHistory.loginTime',
                 'loginHistory.logoutTime',
                 'account.id',
@@ -77,6 +80,8 @@ export class LoginHistoryService {
             .leftJoinAndSelect('account.staffDetail', 'staffDetail')
             .select([
                 'loginHistory.id',
+                'loginHistory.ip',
+                'loginHistory.userAgent',
                 'loginHistory.loginTime',
                 'loginHistory.logoutTime',
                 'account.id',
@@ -87,5 +92,78 @@ export class LoginHistoryService {
             ])
             .where('loginHistory.id = :id OR account.id = :id', { id })
             .getOne();
+    }
+
+    async getLastLogin(accountId: string) {
+        return this.loginHistoryRepository
+            .createQueryBuilder('loginHistory')
+            .select([
+                'loginHistory.id',
+                'loginHistory.ip',
+                'loginHistory.userAgent',
+                'loginHistory.loginTime',
+                'loginHistory.logoutTime',
+            ])
+            .where('loginHistory.accountId = :accountId', { accountId })
+            .orderBy('loginHistory.loginTime', 'DESC')
+            .skip(1)
+            .take(1)
+            .getOne();
+    }
+
+    async findMyHistory(accountId: string, dto: CommonPaginationDto) {
+        const [result, total] = await this.loginHistoryRepository
+            .createQueryBuilder('loginHistory')
+            .select([
+                'loginHistory.id',
+                'loginHistory.ip',
+                'loginHistory.userAgent',
+                'loginHistory.loginTime',
+                'loginHistory.logoutTime',
+            ])
+            .where('loginHistory.accountId = :accountId', { accountId })
+            .orderBy('loginHistory.loginTime', 'DESC')
+            .skip(dto.offset)
+            .take(dto.limit)
+            .getManyAndCount();
+
+        return { result, total };
+    }
+
+    async findByAccountId(accountId: string, dto: LoginHistoryFilterDto) {
+        const [result, total] = await this.loginHistoryRepository
+            .createQueryBuilder('loginHistory')
+            .leftJoinAndSelect('loginHistory.account', 'account')
+            .leftJoinAndSelect('account.staffDetail', 'staffDetail')
+            .leftJoinAndSelect('staffDetail.designation', 'designation')
+            .select([
+                'loginHistory.id',
+                'loginHistory.ip',
+                'loginHistory.userAgent',
+                'loginHistory.loginTime',
+                'loginHistory.logoutTime',
+                'account.id',
+                'account.email',
+                'account.phoneNumber',
+                'account.password',
+                'account.roles',
+                'account.status',
+                'staffDetail.id',
+                'staffDetail.name',
+                'staffDetail.gender',
+                'staffDetail.dob',
+                'staffDetail.city',
+                'staffDetail.state',
+                'staffDetail.country',
+                'designation.id',
+                'designation.name',
+            ])
+            .where('loginHistory.accountId = :accountId', { accountId })
+            .orderBy('loginHistory.loginTime', 'DESC')
+            .skip(dto.offset)
+            .take(dto.limit)
+            .getManyAndCount();
+
+        return { result, total };
     }
 }

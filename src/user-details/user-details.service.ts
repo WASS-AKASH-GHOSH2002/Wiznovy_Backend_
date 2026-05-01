@@ -8,6 +8,7 @@ import { AdminActionLogService } from 'src/admin-action-log/admin-action-log.ser
 import { AdminActionType, AdminActionTargetType } from 'src/enum';
 import { unlink } from 'node:fs/promises';
 import { join } from 'node:path';
+import { NodeMailerService } from 'src/node-mailer/node-mailer.service';
 
 @Injectable()
 export class UserDetailsService {
@@ -16,6 +17,7 @@ export class UserDetailsService {
     @InjectRepository(Account)
     private readonly accountrepo: Repository<Account>,
     private readonly adminActionLogService: AdminActionLogService,
+    private readonly nodeMailerService: NodeMailerService,
   ) {}
 
   async findOne(id: string) {
@@ -31,9 +33,14 @@ export class UserDetailsService {
     if (!result) {
       throw new NotFoundException('User profile not found!');
     }
+
+    const changesList = Object.keys(dto)
+      .filter(k => k !== 'accountId' && dto[k] !== undefined && dto[k] !== result[k])
+      .map(k => `${k} was updated`);
+
     const obj = Object.assign(result, dto);
     const updated = await this.repo.save(obj);
-    
+
     if (adminId && adminId !== accountId) {
       await this.adminActionLogService.log(
         adminId,
@@ -43,8 +50,25 @@ export class UserDetailsService {
         `User profile updated for ${result.name || accountId}`
       );
     }
-    
+
+    if (changesList.length > 0) {
+      const account = await this.accountrepo.findOne({ where: { id: accountId } });
+      if (account?.email) {
+        const firstName = result.name?.split(' ')[0] || 'User';
+        this.nodeMailerService.sendProfileUpdateEmail(account.email, firstName, changesList).catch(() => {});
+      }
+    }
+
     return updated;
+  }
+
+  async updateLocation(accountId: string, dto: { lat: number; lng: number; timezone: string }) {
+    const result = await this.repo.findOne({ where: { accountId } });
+    if (!result) throw new NotFoundException('User profile not found!');
+    result.lat = dto.lat;
+    result.lng = dto.lng;
+    result.timezone = dto.timezone;
+    return this.repo.save(result);
   }
 
   async profileImage(image: string, result: UserDetail) {

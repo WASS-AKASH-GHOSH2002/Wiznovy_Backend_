@@ -13,6 +13,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @Controller('country')
 export class CountryController {
@@ -40,6 +41,7 @@ export class CountryController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+   @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.CREATE, 'country'])
   create(@Body() dto: CreateCountryDto) {
@@ -69,6 +71,7 @@ export class CountryController {
 
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+   @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'country'])
   update(@Param('id') id: string, @Body() dto:UpdateCountryDto) {
@@ -77,6 +80,7 @@ export class CountryController {
 
   @Put('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+   @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'country'])
   updateStatus(@Param('id') id: string, @Body() dto: GoalStatusDto) {
@@ -93,6 +97,7 @@ export class CountryController {
 
   @Put('bulk-status')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+   @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'country'])
   bulkUpdateStatus(@Body() dto: BulkCountryStatusDto) {

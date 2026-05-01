@@ -6,19 +6,16 @@ import { join } from 'node:path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
-//import { readFileSync } from 'fs';
+
 
 
 
 async function bootstrap() {
 
-  //   const httpsOptions = {
-  //   key: readFileSync('ssl/private.pem'),
-  //   cert: readFileSync('ssl/certificate.crt'),
-  //   ca: readFileSync('ssl/sslca.ca-bundle'),
-  // };
+  
 
-const app = await NestFactory.create<NestExpressApplication>(AppModule,  /*{ httpsOptions } */);
+
+const app = await NestFactory.create<NestExpressApplication>(AppModule,  );
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -38,7 +35,7 @@ const app = await NestFactory.create<NestExpressApplication>(AppModule,  /*{ htt
   SwaggerModule.setup('api', app, document);
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
     index: false,
-    prefix: 'uploads',
+    prefix: '/uploads',
   });
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));

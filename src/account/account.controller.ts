@@ -18,12 +18,16 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { DefaultStatus, PermissionAction, UserRole } from 'src/enum';
 import { MenusService } from 'src/menus/menus.service';
+import { ExportStudentsCsvDto } from './dto/export-students-csv.dto';
+import { sendCsvResponse } from 'src/utils/csv.utils';
 import { PermissionsService } from 'src/permissions/permissions.service';
 import { UserPermissionsService } from 'src/user-permissions/user-permissions.service';
 import { AccountService } from './account.service';
 import {
   CreateAccountDto,
   SearchUserPaginationDto,
+  StaffPaginationDto,
+  UpdateMyPasswordDto,
   UpdateStaffDto,
   UpdateStaffPasswordDto,
 } from './dto/account.dto';
@@ -44,6 +48,7 @@ import {
   ApiQuery,
   ApiBody,
 } from '@nestjs/swagger';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @ApiTags('account')
 @ApiBearerAuth('JWT-auth')
@@ -106,6 +111,29 @@ export class AccountController {
     return account;
   }
 
+  @Patch('me/update-password')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Update current user password' })
+  @ApiBody({ type: UpdateMyPasswordDto })
+  @ApiResponse({ status: 200, description: 'Password updated successfully' })
+  @ApiResponse({ status: 409, description: 'Current password is incorrect' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  updateMyPassword(
+    @CurrentUser() user: Account,
+    @Body() dto: UpdateMyPasswordDto,
+  ) {
+    return this.accountService.updateMyPassword(user.id, dto);
+  }
+
+  @Get('me')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Get current logged-in user account, staff detail and menu permissions' })
+  @ApiResponse({ status: 200, description: 'Returns account info with staff detail and permissions' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getCurrentUserProfile(@CurrentUser() user: Account) {
+    return this.accountService.getCurrentUserProfile(user.id);
+  }
+
   @Get('profile')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.USER)
@@ -114,6 +142,30 @@ export class AccountController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   userProfile(@CurrentUser() user: Account) {
     return this.accountService.userProfile(user.id);
+  }
+
+  @Get('user/full-details/:accountId')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'account'])
+  @ApiOperation({ summary: 'Get full user details by account ID (account, userDetail, wallet, sessions, purchases)' })
+  @ApiParam({ name: 'accountId', type: String })
+  @ApiResponse({ status: 200, description: 'Returns full user details' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  getUserFullDetails(@Param('accountId') accountId: string) {
+    return this.accountService.getUserFullDetails(accountId);
+  }
+
+  @Get('tutor/full-details/:accountId')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'account'])
+  @ApiOperation({ summary: 'Get full tutor details by account ID (tutor info, bank details, wallet, transactions)' })
+  @ApiParam({ name: 'accountId', type: String })
+  @ApiResponse({ status: 200, description: 'Returns tutor detail, bank details, wallet and wallet transactions' })
+  @ApiResponse({ status: 404, description: 'Tutor not found' })
+  getTutorFullDetails(@Param('accountId') accountId: string) {
+    return this.accountService.getTutorFullDetails(accountId);
   }
 
   @Get('tutor/profile')
@@ -128,8 +180,8 @@ export class AccountController {
   }
 
   @Get('users')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard)
+  @Roles(UserRole.ADMIN,UserRole.STAFF)
   @CheckPermissions([PermissionAction.READ, 'account'])
   @ApiOperation({ summary: 'Get all users with pagination' })
   @ApiQuery({ name: 'limit', type: Number, required: true, example: 20 })
@@ -144,8 +196,8 @@ export class AccountController {
   }
 
   @Get('tutors')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard)
+  @Roles(UserRole.ADMIN,UserRole.STAFF)
   @CheckPermissions([PermissionAction.READ, 'account'])
   @ApiOperation({ summary: 'Get all tutors with pagination' })
   @ApiQuery({ name: 'limit', type: Number, required: true, example: 20 })
@@ -170,11 +222,24 @@ export class AccountController {
   @ApiQuery({ name: 'offset', type: Number, required: true, example: 0 })
   @ApiQuery({ name: 'keyword', type: String, required: false })
   @ApiQuery({ name: 'status', enum: DefaultStatus, required: false })
+  @ApiQuery({ name: 'designationId', type: String, required: false })
   @ApiResponse({ status: 200, description: 'Returns paginated staff list' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Insufficient permissions' })
-  async getStaffDetails(@Query() dto: DefaultStatusPaginationDto) {
+  async getStaffDetails(@Query() dto: StaffPaginationDto) {
     return this.accountService.getStaffDetails(dto);
+  }
+
+  @Get('staff/full-details/:accountId')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'account'])
+  @ApiOperation({ summary: 'Get staff account, staff details and login history' })
+  @ApiParam({ name: 'accountId', type: String })
+  @ApiResponse({ status: 200, description: 'Returns account, staff detail with designation and login history' })
+  @ApiResponse({ status: 404, description: 'Staff not found' })
+  getStaffFullDetails(@Param('accountId') accountId: string) {
+    return this.accountService.getStaffFullDetails(accountId);
   }
 
   @Get('staff/profile/:accountId')
@@ -190,8 +255,21 @@ export class AccountController {
     return this.accountService.getStaffProfile(accountId);
   }
 
+  @Get('staff/detail/:accountId')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'account'])
+  @ApiOperation({ summary: 'Get full staff details by account ID' })
+  @ApiParam({ name: 'accountId', type: String, example: '1234567890abcdef' })
+  @ApiResponse({ status: 200, description: 'Returns full staff details with account info' })
+  @ApiResponse({ status: 404, description: 'Staff not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getStaffDetailByAccount(@Param('accountId') accountId: string) {
+    return this.accountService.getStaffDetailByAccount(accountId);
+  }
+
   @Patch('update/staff/:accountId')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'account'])
   @ApiOperation({ summary: 'Update staff details' })
@@ -208,7 +286,7 @@ export class AccountController {
   }
 
   @Patch('staff/password/:accountId')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'account'])
   @ApiOperation({ summary: 'Update staff password' })
@@ -225,7 +303,7 @@ export class AccountController {
   }
 
   @Put('staff/status/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'account'])
   @ApiOperation({ summary: 'Update staff status' })
@@ -239,7 +317,8 @@ export class AccountController {
   }
 
   @Put('user/status/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard)
+   @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'account'])
   @ApiOperation({ summary: 'Update user status' })
@@ -253,7 +332,8 @@ export class AccountController {
   }
 
   @Put('tutor/status/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard)
+   @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'account'])
   @ApiOperation({ summary: 'Update tutor status' })
@@ -282,6 +362,7 @@ export class AccountController {
   @Put('users/bulk-status')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+   @AdminProtected()
   @CheckPermissions([PermissionAction.UPDATE, 'account'])
   @ApiOperation({ summary: 'Bulk update user status' })
   @ApiBody({ type: BulkStatusUpdateDto })
@@ -294,6 +375,7 @@ export class AccountController {
   @Put('tutors/bulk-status')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+   @AdminProtected()
   @CheckPermissions([PermissionAction.UPDATE, 'account'])
   @ApiOperation({ summary: 'Bulk update tutor status' })
   @ApiBody({ type: BulkStatusUpdateDto })
@@ -305,7 +387,7 @@ export class AccountController {
 
   @Get('pdf/all-tutors')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN,UserRole.STAFF)
   @CheckPermissions([PermissionAction.READ, 'account'])
   @ApiOperation({ summary: 'Generate PDF report for all tutors' })
   @ApiResponse({ status: 200, description: 'PDF generated successfully' })
@@ -317,7 +399,7 @@ export class AccountController {
 
   @Get('pdf/all-users')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN,UserRole.STAFF)
   @CheckPermissions([PermissionAction.READ, 'account'])
   @ApiOperation({ summary: 'Generate PDF report for all users' })
   @ApiResponse({ status: 200, description: 'PDF generated successfully' })
@@ -329,7 +411,8 @@ export class AccountController {
 
   @Patch('update-contact/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN,UserRole.STAFF)
+   @AdminProtected()
   @CheckPermissions([PermissionAction.UPDATE, 'account'])
   @ApiOperation({ summary: 'Update user email and phone number' })
   @ApiParam({ name: 'id', type: String, example: '1234567890abcdef' })
@@ -343,5 +426,23 @@ export class AccountController {
     @Body() dto: UpdateUserContactDto
   ) {
     return this.accountService.updateUserContact(id, dto);
+  }
+
+  @Get('export/students/csv')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'account'])
+  async exportStudentsCsv(@Query() dto: ExportStudentsCsvDto, @Res() res: Response) {
+    const { csv, fileName } = await this.accountService.exportStudentsCsv(dto);
+    sendCsvResponse(res, csv, fileName);
+  }
+
+  @Get('export/tutors/csv')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'account'])
+  async exportTutorsCsv(@Query() dto: ExportStudentsCsvDto, @Res() res: Response) {
+    const { csv, fileName } = await this.accountService.exportTutorsCsv(dto);
+    sendCsvResponse(res, csv, fileName);
   }
 }

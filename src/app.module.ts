@@ -41,7 +41,6 @@ import { CityModule } from './city/city.module';
 import { GlobalSearchModule } from './global-search/global-search.module';
 import { VideoLectureModule } from './video-lecture/video-lecture.module';
 import { BookModule } from './book/book.module';
-import { ClassModule } from './class/class.module';
 import { TutorAvailabilityModule } from './tutor-availability/tutor-availability.module';
 import { BoookImagesModule } from './boook-images/boook-images.module';
 import { StudyMaterialModule } from './study-material/study-material.module';
@@ -49,7 +48,6 @@ import { UserProgressModule } from './user-progress/user-progress.module';
 import { UnitModule } from './unit/unit.module';
 import { UserPurchaseModule } from './user-purchase/user-purchase.module';
 import { SessionModule } from './session/session.module';
-import { FixedSessionModule } from './fixed-session/fixed-session.module';
 import { QualificationModule } from './qualification/qualification.module';;
 import { StateModule } from './state/state.module';
 import { PaymentModule } from './payment/payment.module';
@@ -61,6 +59,8 @@ import { WalletTransactionModule } from './wallet-transaction/wallet-transaction
 import { ZoomModule } from './zoom/zoom.module';
 import { ContactUsCategoryModule } from './contact-us-category/contact-us-category.module';
 import { AdminActionLogModule } from './admin-action-log/admin-action-log.module';
+import { DesignationsModule } from './designations/designations.module';
+import { CronMailModule } from './cron-mail/cron-mail.module';
 
 @Module({
   imports: [
@@ -123,7 +123,6 @@ ConfigModule.forRoot({
     GlobalSearchModule,
     VideoLectureModule,
     BookModule,
-    ClassModule,
     TutorAvailabilityModule,
     BoookImagesModule,
     StudyMaterialModule,
@@ -131,7 +130,6 @@ ConfigModule.forRoot({
     UnitModule,
     UserPurchaseModule,
     SessionModule,
-    FixedSessionModule,
     QualificationModule,
     StateModule,
     PaymentModule,
@@ -143,6 +141,9 @@ ConfigModule.forRoot({
     ZoomModule,
     ContactUsCategoryModule,
     AdminActionLogModule,
+    DesignationsModule,
+    CronMailModule,
+   
   ],
   controllers: [AppController],
   providers: [AppService],

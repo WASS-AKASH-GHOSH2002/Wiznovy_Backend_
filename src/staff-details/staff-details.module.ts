@@ -6,10 +6,11 @@ import { StaffDetail } from './entities/staff-detail.entity';
 import { StaffDetailsController } from './staff-details.controller';
 import { StaffDetailsService } from './staff-details.service';
 import { Menu } from 'src/menus/entities/menu.entity';
+import { Designation } from 'src/designations/entities/designation.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([StaffDetail, Menu]),
+    TypeOrmModule.forFeature([StaffDetail, Menu, Designation]),
     AuthModule,
     MulterModule.register(),
   ],

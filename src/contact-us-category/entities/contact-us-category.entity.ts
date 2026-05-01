@@ -1,4 +1,4 @@
-import { DefaultStatus } from "src/enum";
+import { DefaultStatus, ContactUsType } from "src/enum";
 import { ContactUs } from "src/contact-us/entities/contact-us.entity";
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
@@ -9,6 +9,9 @@ export class ContactUsCategory {
 
   @Column({ type: 'varchar', length: 255 })
   title: string;
+
+  @Column({ type: 'enum', enum: ContactUsType, default: ContactUsType.USER })
+  type: ContactUsType;
 
   @Column({ type: 'enum', enum:DefaultStatus, default: DefaultStatus.ACTIVE })
   status: DefaultStatus;

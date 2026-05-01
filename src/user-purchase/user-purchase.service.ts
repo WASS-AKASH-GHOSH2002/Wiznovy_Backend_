@@ -2,21 +2,16 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
-  
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserPurchase } from './entities/user-purchase.entity';
-import { PurchaseType, PaymentStatus } from 'src/enum';
+import { PaymentStatus } from 'src/enum';
 import { Course } from '../course/entities/course.entity';
-import { Unit } from '../unit/entities/unit.entity';
-import { StudyMaterial } from '../study-material/entities/study-material.entity';
-import { VideoLecture } from '../video-lecture/entities/video-lecture.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { OrderNumberGenerator } from '../utils/order-number.util';
 
 interface PurchaseDto {
-  purchaseType: PurchaseType;
   itemId: string;
 }
 
@@ -27,27 +22,15 @@ export class UserPurchaseService {
     private readonly repo: Repository<UserPurchase>,
     @InjectRepository(Course)
     private readonly courseRepo: Repository<Course>,
-    @InjectRepository(Unit)
-    private readonly unitRepo: Repository<Unit>,
-    @InjectRepository(StudyMaterial)
-    private readonly studyRepo: Repository<StudyMaterial>,
-    @InjectRepository(VideoLecture)
-    private readonly videoRepo: Repository<VideoLecture>,
     private readonly notificationsService: NotificationsService
   ) {}
 
   
   async purchaseItem(dto: PurchaseDto, accountId: string) {
-    if (dto.purchaseType !== PurchaseType.COURSE) {
-      throw new BadRequestException('Only full courses can be purchased.');
-    }
-
-    
     const existing = await this.repo.findOne({
       where: {
         accountId,
         courseId: dto.itemId,
-        purchaseType: PurchaseType.COURSE,
         paymentStatus: PaymentStatus.COMPLETED,
       },
     });
@@ -56,42 +39,29 @@ export class UserPurchaseService {
       throw new BadRequestException('You already own this course.');
     }
 
-    
-    const course = await this.courseRepo.findOne({
-      where: { id: dto.itemId },
-      relations: ['units', 'units.studyMaterials', 'units.videoLectures'],
-    });
+    const course = await this.courseRepo.findOne({ where: { id: dto.itemId } });
     if (!course) throw new NotFoundException('Course not found');
 
     const originalAmount = course.price || 0;
-    const finalAmount = originalAmount; 
     const expiryDate = this.calculateExpiryDate(course.validityDays || 365);
 
-    
-    const purchase = this.repo.create({
+    const saved = await this.repo.save(this.repo.create({
       accountId,
       courseId: dto.itemId,
-      purchaseType: PurchaseType.COURSE,
-      amount: finalAmount,
+      amount: originalAmount,
       originalAmount,
-      discountAmount: 0,
       paymentStatus: PaymentStatus.PENDING,
       transactionId: `TXN_${Date.now()}`,
       orderNumber: OrderNumberGenerator.generateOrderNumber(),
       expiresAt: expiryDate,
-    });
-
-    const saved = await this.repo.save(purchase);
-    saved.merchantOrderId = `${Date.now()}_${saved.id.slice(0, 8)}`;
-    await this.repo.save(saved);
+    }));
 
     return {
       success: true,
       message: 'Course purchase started. Please complete the payment.',
-      merchantOrderId: saved.merchantOrderId,
       purchaseId: saved.id,
       itemName: course.name,
-      amount: finalAmount,
+      amount: originalAmount,
     };
   }
 
@@ -133,9 +103,100 @@ export class UserPurchaseService {
     return expiry;
   }
 
+  async getMyEnrolledCourses(accountId: string, query: any) {
+    const now = new Date();
+
+    const queryBuilder = this.repo.createQueryBuilder('purchase')
+      .leftJoin('purchase.course', 'course')
+      .leftJoin('course.tutor', 'tutor')
+      .leftJoin('tutor.tutorDetail', 'tutorDetail')
+      .leftJoin('course.subject', 'subject')
+      .leftJoin('course.language', 'language')
+      .select([
+        'purchase.id',
+        'purchase.courseId',
+        'purchase.amount',
+        'purchase.paymentStatus',
+        'purchase.paidAt',
+        'purchase.expiresAt',
+        'purchase.createdAt',
+        'course.id',
+        'course.name',
+        'course.description',
+        'course.thumbnailUrl',
+        'course.totalDuration',
+        'course.totalLectures',
+        'course.averageRating',
+        'course.validityDays',
+        'course.accessType',
+        'subject.id',
+        'subject.name',
+        'language.id',
+        'language.name',
+        'tutor.id',
+        'tutorDetail.name',
+        'tutorDetail.profileImage',
+      ])
+      .where('purchase.accountId = :accountId', { accountId })
+      .andWhere('purchase.paymentStatus = :status', { status: PaymentStatus.COMPLETED });
+
+    if (query.isExpired === 'true') {
+      queryBuilder.andWhere('purchase.expiresAt < :now', { now });
+    } else if (query.isExpired === 'false') {
+      queryBuilder.andWhere('(purchase.expiresAt IS NULL OR purchase.expiresAt >= :now)', { now });
+    }
+
+    const [result, total] = await queryBuilder
+      .orderBy('purchase.createdAt', 'DESC')
+      .skip(query.offset || 0)
+      .take(query.limit || 10)
+      .getManyAndCount();
+
+    return {
+      result: result.map(p => ({
+        ...p,
+        isExpired: p.expiresAt ? new Date() > p.expiresAt : false,
+        daysRemaining: p.expiresAt
+          ? Math.max(0, Math.ceil((p.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+          : null,
+      })),
+      total,
+    };
+  }
+
+  async checkCourseEnrollment(accountId: string, courseId: string) {
+    const now = new Date();
+    const purchase = await this.repo.findOne({
+      where: {
+        accountId,
+        courseId,
+        paymentStatus: PaymentStatus.COMPLETED,
+      },
+    });
+
+    if (!purchase) {
+      return { enrolled: false, hasAccess: false };
+    }
+
+    const isExpired = purchase.expiresAt ? now > purchase.expiresAt : false;
+    const daysRemaining = purchase.expiresAt
+      ? Math.max(0, Math.ceil((purchase.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+      : null;
+
+    return {
+      enrolled: true,
+      hasAccess: !isExpired,
+      isExpired,
+      expiresAt: purchase.expiresAt,
+      daysRemaining,
+      purchaseId: purchase.id,
+      paidAt: purchase.paidAt,
+    };
+  }
+
   async findAll(dto: any) {
     const [result, total] = await this.repo.findAndCount({
-      relations: ['account', 'course', 'unit', 'studyMaterial'],
+      relations: ['account', 'course'],
       skip: dto.offset || 0,
       take: dto.limit || 10,
       order: { createdAt: 'DESC' }
@@ -146,7 +207,7 @@ export class UserPurchaseService {
   async findAllByUser(userId: string, query: any) {
     const [result, total] = await this.repo.findAndCount({
       where: { accountId: userId },
-      relations: ['course', 'unit', 'studyMaterial'],
+      relations: ['course'],
       skip: query.offset || 0,
       take: query.limit || 10,
       order: { createdAt: 'DESC' }

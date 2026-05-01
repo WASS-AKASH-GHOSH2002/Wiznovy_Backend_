@@ -1,4 +1,4 @@
-import { Controller, Get,Param, Query, UseGuards,  } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { WalletTransactionService } from './wallet-transaction.service';
 import {  WalletTransactionPaginationDto } from './dto/create-wallet-transaction.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -13,6 +13,18 @@ import { UserRole } from 'src/enum';
 export class WalletTransactionController {
   constructor(private readonly walletTransactionService: WalletTransactionService) {}
 
+
+  @Get('admin/all')
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  findAllAdmin(@Query() dto: WalletTransactionPaginationDto) {
+    return this.walletTransactionService.adminFindAll(dto);
+  }
+
+  @Get('admin/:id')
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  adminFindOne(@Param('id') id: string) {
+    return this.walletTransactionService.adminFindOne(id);
+  }
 
   @Get()
   @Roles(UserRole.TUTOR, UserRole.USER)

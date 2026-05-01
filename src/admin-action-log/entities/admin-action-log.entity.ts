@@ -28,6 +28,9 @@ export class AdminActionLog {
   @Column({ type: 'json', nullable: true })
   newData: any;
 
+  @Column({ type: 'text', nullable: true })
+  description: string;
+
   @Column({ nullable: true })
   ipAddress: string;
 

@@ -1,4 +1,4 @@
-import { Body, Controller,  Ip, Post, 
+import { Body, Controller, Headers, Ip, Post, 
    UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -32,8 +32,8 @@ export class AuthController {
   @ApiBody({ type: AdminSigninDto })
   @ApiResponse({ status: 200, description: 'OTP sent to admin email' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  signin(@Body() dto: AdminSigninDto, @Ip() ip: string) {
-    return this.authService.signIn(dto.loginId, dto.password, ip);
+  signin(@Body() dto: AdminSigninDto, @Ip() ip: string, @Headers('user-agent') userAgent: string) {
+    return this.authService.signIn(dto.loginId, dto.password, ip, userAgent);
   }
 
   @Post('admin/verify-login')
@@ -41,17 +41,17 @@ export class AuthController {
   @ApiBody({ type: VerifyOtpDto })
   @ApiResponse({ status: 200, description: 'Admin logged in successfully' })
   @ApiResponse({ status: 400, description: 'Invalid OTP' })
-  verifyAdminLogin(@Body() dto: VerifyOtpDto) {
-    return this.authService.verifyAdminLoginOtp(dto.email, dto.otp);
+  verifyAdminLogin(@Body() dto: VerifyOtpDto, @Headers('user-agent') userAgent: string) {
+    return this.authService.verifyAdminLoginOtp(dto.email, dto.otp, userAgent);
   }
   @Post('user/verify-registration')
-  verifyRegistrationOtp(@Body() dto: VerifyOtpDto, @Ip() ip: string) {
-    return this.authService.verifyRegistrationOtp(dto.email, dto.otp, ip);
+  verifyRegistrationOtp(@Body() dto: VerifyOtpDto, @Ip() ip: string, @Headers('user-agent') userAgent: string) {
+    return this.authService.verifyRegistrationOtp(dto.email, dto.otp, ip, userAgent);
   }
 
  @Post('tutor/verify-registration')
-  verifyTutorRegistrationOtp(@Body() dto: VerifyOtpDto, @Ip() ip: string) {
-    return this.authService.verifyTutorRegistrationOtp(dto.email, dto.otp, ip);
+  verifyTutorRegistrationOtp(@Body() dto: VerifyOtpDto, @Ip() ip: string, @Headers('user-agent') userAgent: string) {
+    return this.authService.verifyTutorRegistrationOtp(dto.email, dto.otp, ip, userAgent);
   }
     @Post('user/register')
   @ApiOperation({ summary: 'User registration' })
@@ -86,8 +86,9 @@ export class AuthController {
   @ApiBody({ type: UserLoginDto })
   @ApiResponse({ status: 200, description: 'User logged in successfully' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  userLogin(@Body() dto: UserLoginDto, @Ip() ip: string) {
+  userLogin(@Body() dto: UserLoginDto, @Ip() ip: string, @Headers('user-agent') userAgent: string) {
     dto.ip = ip;
+    dto.userAgent = userAgent;
     return this.authService.userLogin(dto);
   }
 
@@ -129,8 +130,9 @@ export class AuthController {
   @ApiBody({ type: UserLoginDto })
   @ApiResponse({ status: 200, description: 'Tutor logged in successfully' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  tutorLogin(@Body() dto: UserLoginDto, @Ip() ip: string) {
+  tutorLogin(@Body() dto: UserLoginDto, @Ip() ip: string, @Headers('user-agent') userAgent: string) {
     dto.ip = ip;
+    dto.userAgent = userAgent;
     return this.authService.tutorLogin(dto);
   }
 
@@ -153,8 +155,6 @@ export class AuthController {
     return this.authService.verifyOtp(dto.email, dto.otp);
   }
 
-  
-
   @Post('resetPass')
   @ApiOperation({ summary: 'Reset password' })
   @ApiBody({ type: ForgotPassDto })
@@ -164,8 +164,6 @@ export class AuthController {
     return this.authService.resetPassword(dto);
   }
   
-
-
   @Post('logout')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth('JWT-auth')

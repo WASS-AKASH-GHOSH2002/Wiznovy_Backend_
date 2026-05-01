@@ -4,10 +4,13 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery, 
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { UserRole } from 'src/enum';
+import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
+import { CheckPermissions } from 'src/auth/decorators/permissions.decorator';
+import { PermissionAction, UserRole } from 'src/enum';
 import { Account } from 'src/account/entities/account.entity';
 import { TutorPayoutService } from './tutor-payout.service';
 import { CreatePayoutDto, PayoutPaginationDto, ApprovePayoutDto, RejectPayoutDto } from './dto/payout.dto';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @ApiTags('tutor-payout')
 @ApiBearerAuth('JWT-auth')
@@ -27,8 +30,9 @@ export class TutorPayoutController {
   }
 
   @Get('admin/list')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'tutor_payout'])
   @ApiOperation({ summary: 'Get all payout requests for admin' })
   @ApiQuery({ name: 'limit', type: Number, required: true, example: 20 })
   @ApiQuery({ name: 'offset', type: Number, required: true, example: 0 })
@@ -52,8 +56,9 @@ export class TutorPayoutController {
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.READ, 'tutor_payout'])
   @ApiOperation({ summary: 'Get payout request details' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Returns payout request details' })
@@ -62,8 +67,10 @@ export class TutorPayoutController {
   }
 
   @Put('approve/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'tutor_payout'])
   @ApiOperation({ summary: 'Approve payout request' })
   @ApiParam({ name: 'id', type: String })
   @ApiBody({ type: ApprovePayoutDto })
@@ -73,8 +80,10 @@ export class TutorPayoutController {
   }
 
   @Put('reject/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'tutor_payout'])
   @ApiOperation({ summary: 'Reject payout request' })
   @ApiParam({ name: 'id', type: String })
   @ApiBody({ type: RejectPayoutDto })

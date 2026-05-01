@@ -38,8 +38,9 @@ export enum QnAStatus {
 }
 
 export enum ContactUsStatus {
-  PENDING = 'PENDING',
+  OPEN = 'OPEN',
   REPLIED = 'REPLIED',
+  CLOSED = 'CLOSED',
 }
 
 export enum PermissionAction {
@@ -61,52 +62,48 @@ export enum PageType {
   TUTOR = 'TUTOR',
 }
 
+export enum ContactUsType {
+  USER = 'USER',
+  TUTOR = 'TUTOR',
+}
+
 export enum NotificationType {
- 
-  NEW_PRODUCT = 'NEW PRODUCT',
-  NEW_ACCOUNT = 'NEW ACCOUNT',
-  CONTACT_US = 'CONTACT US',
-  QNA = 'QNA',
-  FEEDBACK = 'FEEDBACK',
-  INVOICE = 'INVOICE',
-  STAFF = 'STAFF',
-  TICKET = 'TICKET',
+  // Session
+  SESSION_BOOKED        = 'SESSION_BOOKED',
+  SESSION_REMINDER      = 'SESSION_REMINDER',
+  SESSION_CANCELLED     = 'SESSION_CANCELLED',
+  SESSION_RESCHEDULED   = 'SESSION_RESCHEDULED',
+  SESSION_COMPLETED     = 'SESSION_COMPLETED',
 
+  // Payment
+  PAYMENT_SUCCESS       = 'PAYMENT_SUCCESS',
+  PAYMENT_FAILED        = 'PAYMENT_FAILED',
+  REFUND_PROCESSED      = 'REFUND_PROCESSED',
 
-  USER_PRODUCT = 'USER PRODUCT',
-  USER_ACCOUNT = 'USER ACCOUNT',
-  USER_INVOICE = 'USER INVOICE',
-  USER_PAYMENT = 'USER PAYMENT',
-  USER_TICKET = 'USER TICKET',
-  OFFER = 'OFFER',
+  // Course
+  MY_LEARNING           = 'MY_LEARNING',
+  COURSE_ANALYTICS      = 'COURSE_ANALYTICS',
+  COURSE_PAGE           = 'COURSE_PAGE',
+  COURSE_PURCHASE       = 'COURSE_PURCHASE',
+  COURSE_ENROLLMENT     = 'COURSE_ENROLLMENT',
+  ZOOM_MEETING          = 'ZOOM_MEETING',
 
+  // Payout
+  PAYOUT_SUBMITTED      = 'PAYOUT_SUBMITTED',
+  PAYOUT_APPROVED       = 'PAYOUT_APPROVED',
+  PAYOUT_REJECTED       = 'PAYOUT_REJECTED',
 
-  SESSION_BOOKED = 'SESSION_BOOKED',
-  SESSION_CANCELLED = 'SESSION_CANCELLED',
-  SESSION_RESCHEDULED = 'SESSION_RESCHEDULED',
-  SESSION_REMINDER = 'SESSION_REMINDER',
-  SESSION_COMPLETED = 'SESSION_COMPLETED',
-  
-
-  PAYMENT_SUCCESS = 'PAYMENT_SUCCESS',
-  PAYMENT_FAILED = 'PAYMENT_FAILED',
-  REFUND_PROCESSED = 'REFUND_PROCESSED',
-
-  PAYOUT_SUBMITTED = 'PAYOUT_SUBMITTED',
-  PAYOUT_APPROVED = 'PAYOUT_APPROVED',
-  PAYOUT_REJECTED = 'PAYOUT_REJECTED',
-
-  // FOR ALL
-  LOGIN = 'LOGIN',
-
-  DEMO = 'DEMO'
+  // User / General
+  NEW_USER              = 'NEW_USER',
+  NEW_MESSAGE           = 'NEW_MESSAGE',
+  EXPIRY_WARNING        = 'EXPIRY_WARNING',
+  COUPON                = 'COUPON',
+  FEEDBACK              = 'FEEDBACK',
+  RATING                = 'RATING',
+  LOGIN                 = 'LOGIN',
+  DEMO                  = 'DEMO',
 }
 
-export enum YNStatus {
-  All = 'All',
-  YES = 'Yes',
-  NO = 'No',
-}
 
 export enum Feature {
   TRUE = 'TRUE',
@@ -194,11 +191,6 @@ export enum DateType {
   UPCOMING = 'upcoming',
 }
 
-export enum PaymentMethod {
-  CASH = 'CASH',
-  ONLINE = 'ONLINE',
-  UPI = 'UPI',
-}
 
 
 export enum Qualification {
@@ -274,7 +266,8 @@ export enum CourseStatus {
 
 export enum TransactionType {
   CREDIT = 'CREDIT',
-  DEBIT = 'DEBIT'
+  DEBIT = 'DEBIT',
+  PENDING_EARNING = 'PENDING_EARNING'
 }
 
 export enum TransactionStatus {
@@ -289,10 +282,9 @@ export enum PayoutStatus {
 
 }
 
-export enum PaymentMethod {
-  BANK_TRANSFER = 'BANK_TRANSFER',
-  PAYPAL = 'PAYPAL',
-  STRIPE = 'STRIPE'
+export enum ApprovePaymentMethod {
+BANK_TRANSFER = 'BANK_TRANSFER',
+  
 }
 
 export enum FileSizeLimit {
@@ -326,11 +318,49 @@ export enum AdminActionType {
 }
 
 export enum AdminActionTargetType {
-  COURSE = 'COURSE',
-  PAYOUT = 'PAYOUT',
-  USER = 'USER',
-  TUTOR = 'TUTOR',
-  STAFF = 'STAFF',
+  COURSE = 'course',
+  PAYOUT = 'tutor-payout',
+  USER = 'account',
+  TUTOR = 'account',
+  STAFF = 'account',
+  SESSION = 'session',
+  LANGUAGE = 'languages',
+  COUNTRY = 'country',
+  CATEGORY = 'categories',
+  SUBJECT = 'subjects',
+  BANNER = 'banner',
+  FAQ = 'faqs',
+  PAGE = 'pages',
+  SETTINGS = 'settings',
+  
+  MENU = 'menus',
+  CONTACT_US = 'contact-us',
+  RATING = 'rating',
+  BOOK = 'books',
+  UNIT = 'unit',
+  VIDEO_LECTURE = 'video-lecture',
+  STUDY_MATERIAL = 'study-material',
+  WALLET = 'wallet',
+  BANK_DETAILS = 'bank-details',
+  Topic='topic',
+DESIGNATIONS='designations',
+CONTACT_US_CATEGORY='contact-us-category',
+GOAL='goal',
+BUDGET='budget',
+    PERMISSION='user-permissions',
+    'QUALIFICATION'='qualification'
+}
+
+export enum LanguageProficiency {
+  NATIVE = 'Native',
+  FLUENT = 'Fluent',
+  INTERMEDIATE = 'Intermediate',
+  BASIC = 'Basic',
+}
+
+export enum RatingType {
+  COURSE  = 'COURSE',
+  TUTOR   = 'TUTOR',
   SESSION = 'SESSION',
 }
 
@@ -338,3 +368,9 @@ export enum FaqType {
   USER = 'USER',
   TUTOR = 'TUTOR',
 }
+
+export enum PaymentMethod {
+  STRIPE = 'STRIPE',
+  WALLET = 'WALLET'
+}
+

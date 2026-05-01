@@ -44,7 +44,7 @@ export class CourseController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
+  @Roles(UserRole.TUTOR)
   @UsePipes(new ValidationPipe({ transform: true }))
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -68,7 +68,6 @@ export class CourseController {
   @Post('admin')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @AdminProtected()
   @UsePipes(new ValidationPipe({ transform: true }))
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -90,6 +89,11 @@ export class CourseController {
   }
 
 
+  @Get('top-courses')
+  getTopCourses() {
+    return this.courseService.getTopCourses();
+  }
+
   @Get('admin')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.STAFF)
@@ -108,7 +112,7 @@ export class CourseController {
   @Get()
   @UseGuards(AuthGuard('jwt'))
   findByUser(@Query() dto: CoursePaginationDto, @CurrentUser() user: Account) {
-    return this.courseService.findByUser(dto, user.id);
+    return this.courseService.findByUser(dto, user?.id);
   }
 
  
@@ -119,7 +123,7 @@ export class CourseController {
 
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
+  @Roles(UserRole.TUTOR)
   @UsePipes(new ValidationPipe({ transform: true }))
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -144,8 +148,9 @@ export class CourseController {
 
 
   @Patch('admin/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
+  @UseGuards(AuthGuard('jwt'), RolesGuard,PermissionsGuard)
+   @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF,)
   @UsePipes(new ValidationPipe({ transform: true }))
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -168,11 +173,20 @@ export class CourseController {
   }
 
 
+  @Patch('top-course/:id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF)
+  @CheckPermissions([PermissionAction.UPDATE, 'course'])
+  updateTopCourse(@Param('id') id: string, @Body('topCourse') topCourse: boolean) {
+    return this.courseService.updateTopCourse(id, topCourse);
+  }
+
   @Patch('status/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF, UserRole.TUTOR)
-  @CheckPermissions([PermissionAction.UPDATE, 'course'])
   @AdminProtected()
+  @Roles(UserRole.ADMIN, UserRole.STAFF,)
+  @CheckPermissions([PermissionAction.UPDATE, 'course'])
   updateStatus(
     @Param('id') id: string,
     @Body() dto: CourseStatusDto
@@ -180,26 +194,10 @@ export class CourseController {
     return this.courseService.updateStatus(id, dto);
   }
 
-  @Put('image/:id')
-  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
-  @Roles(UserRole.ADMIN, UserRole.STAFF)
-  @CheckPermissions([PermissionAction.UPDATE, 'course'])
-  @UseInterceptors(FileInterceptor('file', CourseController.getStorageConfig('./uploads/Course/images')))
-  async image(
-    @Param('id') id: string,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [],
-      }),
-    )
-    file: Express.Multer.File,
-  ) {
-    const course = await this.courseService.findOne(id);
-    return this.courseService.image(file.path, course);
-  }
-
+ 
   @Put('thumbnail/:id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+   @AdminProtected()
   @Roles(UserRole.ADMIN, UserRole.STAFF)
   @CheckPermissions([PermissionAction.UPDATE, 'course'])
   @UseInterceptors(FileInterceptor('file', CourseController.getStorageConfig('./uploads/Course/thumbnails')))

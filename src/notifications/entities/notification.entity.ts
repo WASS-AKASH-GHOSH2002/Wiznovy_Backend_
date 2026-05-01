@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -32,9 +33,10 @@ export class Notification {
   accountId: string;
 
   @ManyToOne(() => Account, (account) => account.notification, {
-    cascade: true,
+    nullable: true,
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
   })
-  account: Account[];
+  @JoinColumn({ name: 'accountId' })
+  account: Account;
 }

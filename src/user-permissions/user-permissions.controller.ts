@@ -8,12 +8,21 @@ import { PermissionAction, UserRole } from 'src/enum';
 import { UpdatePermissionDto } from './dto/permission.dto';
 import { UserPermissionsService } from './user-permissions.service';
 import { BoolStatusDto } from 'src/common/dto/bool-status.dto';
+import { AdminProtected } from 'src/admin-action-log/decorators/admin-protected.decorator';
 
 @Controller('user-permissions')
 export class UserPermissionsController {
   constructor(
     private readonly userPermissionsService: UserPermissionsService,
   ) {}
+
+  @Get('account/:accountId')
+  @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @Roles(...Object.values(UserRole))
+  @CheckPermissions([PermissionAction.READ, 'user_permission'])
+  async getAllPermissionsByAccount(@Param('accountId') accountId: string) {
+    return this.userPermissionsService.getAllPermissionsByAccount(accountId);
+  }
 
   @Get(':menuId/:accountId')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
@@ -25,6 +34,7 @@ export class UserPermissionsController {
 
   @Put(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+  @AdminProtected()
   @Roles(...Object.values(UserRole))
   @CheckPermissions([PermissionAction.UPDATE, 'user_permission'])
   async update(@Param('id') id: string, @Body() dto: UpdatePermissionDto) {
@@ -33,14 +43,14 @@ export class UserPermissionsController {
       menuItem.userPermission.forEach((permItem) => {
         obj.push({
           id: permItem.id,
-          rootAccountId: permItem.accountId,
+          accountId: permItem.accountId,
           menuId: menuItem.id,
           permissionId: permItem.permission.id,
           status: permItem.status,
         });
       });
     });
-    this.userPermissionsService.create(obj);
+    await this.userPermissionsService.update(obj);
     return { menu: dto.menu };
   }
 

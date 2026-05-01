@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ContactUsPaginationDto, CreateContactUsDto } from './dto/create-contact-us.dto';
+import { ContactUsPaginationDto, ContactUsStatusDto, CreateContactUsDto } from './dto/create-contact-us.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ContactUs } from './entities/contact-us.entity';
 import { Brackets, Repository } from 'typeorm';
@@ -30,10 +30,11 @@ export class ContactUsService {
         'contactUs.phoneNumber',
         'contactUs.message',
         'contactUs.createdAt',
+        'contactUs.status',
         'contactUs.categoryId',
         'category.id',
         'category.title',
-    
+        'category.type',
 
       ]);
       if (dto.categoryId) {
@@ -41,14 +42,26 @@ export class ContactUsService {
           categoryId: dto.categoryId,
         });
       }
+      if (dto.type) {
+        query.andWhere('category.type = :type', { type: dto.type });
+      }
+      if (dto.status) {
+        query.andWhere('contactUs.status = :status', { status: dto.status });
+      }
+      if (dto.startDate) {
+        query.andWhere('contactUs.createdAt >= :startDate', { startDate: new Date(dto.startDate) });
+      }
+      if (dto.endDate) {
+        const end = new Date(dto.endDate);
+        end.setHours(23, 59, 59, 999);
+        query.andWhere('contactUs.createdAt <= :endDate', { endDate: end });
+      }
     if (keyword && keyword.length > 0) {
       query.andWhere(
         new Brackets((qb) => {
           qb.where(
-            'contactUs.firstName LIKE :keyword OR contactUs.lastName LIKE :keyword OR contactUs.email LIKE :keyword OR contactUs.phoneNumber LIKE :keyword OR contactUs.message LIKE :keyword OR category.title LIKE :keyword',
-            {
-              keyword: '%' + keyword + '%',
-            },
+            'contactUs.firstName LIKE :keyword OR contactUs.lastName LIKE :keyword OR CONCAT(contactUs.firstName, \' \', contactUs.lastName) LIKE :keyword OR contactUs.email LIKE :keyword OR contactUs.phoneNumber LIKE :keyword OR contactUs.message LIKE :keyword OR category.title LIKE :keyword',
+            { keyword: '%' + keyword + '%' },
           );
         }),
       );
@@ -61,6 +74,15 @@ export class ContactUsService {
       .getManyAndCount();
 
     return { result, total };
+  }
+
+  async updateStatus(id: string, dto: ContactUsStatusDto) {
+    const contactUs = await this.repo.findOne({ where: { id } });
+    if (!contactUs) {
+      throw new Error('Contact us entry not found');
+    }
+    Object.assign(contactUs, dto);
+    return this.repo.save(contactUs);
   }
 
   async findOne(id: string) {

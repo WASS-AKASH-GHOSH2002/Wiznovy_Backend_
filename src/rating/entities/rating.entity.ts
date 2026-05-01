@@ -1,7 +1,7 @@
 import { Account } from 'src/account/entities/account.entity';
 import { Course } from 'src/course/entities/course.entity';
 import { Session } from 'src/session/entities/session.entity';
-
+import { RatingType } from 'src/enum';
 import {
   Column,
   CreateDateColumn,
@@ -23,7 +23,9 @@ export class Rating {
   @Column({ type: 'text', nullable: true })
   comment: string;
 
-  
+  @Column({ type: 'enum', enum: RatingType, nullable: true })
+  type: RatingType;
+
   @Column({ type: 'uuid' })
   accountId: string;
 

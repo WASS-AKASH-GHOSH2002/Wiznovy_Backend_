@@ -1,5 +1,6 @@
 import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable, Logger, NotAcceptableException } from '@nestjs/common';
+import { SettingsService } from 'src/settings/settings.service';
 
 export interface SessionBookingConfirmationDto {
   email: string;
@@ -18,7 +19,23 @@ export interface SessionBookingConfirmationDto {
 export class NodeMailerService {
   private readonly logger = new Logger(NodeMailerService.name);
 
-  constructor(private readonly mailService: MailerService) { }
+  constructor(
+    private readonly mailService: MailerService,
+    private readonly settingsService: SettingsService,
+  ) {}
+
+  private async isEmailEnabled(): Promise<boolean> {
+    const settings = await this.settingsService.getSettings();
+    return settings?.emailEnabled ?? true;
+  }
+
+  private async send(options: Parameters<MailerService['sendMail']>[0]): Promise<void> {
+    if (!await this.isEmailEnabled()) {
+      this.logger.warn(`Email sending is disabled. Skipping mail to ${options.to}`);
+      return;
+    }
+    await this.mailService.sendMail(options);
+  }
 
   async sendEmail(name: string, email: string) {
     try {
@@ -194,7 +211,7 @@ export class NodeMailerService {
             <i class="fas fa-envelope-open"></i>
           </div>
         </div>
-        <h2>Dear Customer</h2>
+        <h2>Dear </h2>
         <p>Your One-Time Password (OTP) for verification is:</p>
         <div class="otp-code">${otp}</div>
         <p class="mt-4">
@@ -222,72 +239,49 @@ export class NodeMailerService {
     }
   }
 
-   async welcomeMail(email: string, name: string, joinDate: string) {
+  async welcomeMail(email: string, name: string, joinDate: string) {
+    const dashboardLink = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/dashboard` : 'https://wiznovy.com/dashboard';
     try {
-      return await  this.mailService.sendMail({
+      return await this.mailService.sendMail({
         to: email,
         from: 'wiznovy@gmail.com',
-        subject: 'Welcome to Wiznovy',
+        subject: 'Welcome to Wiznovy!',
         html: `
-      <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Welcome to Wiznovy</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      padding: 20px;
-      margin: 0;
-    }
-    .container {
-      background-color: #ffffff;
-      border-radius: 8px;
-      padding: 25px;
-      margin: auto;
-      max-width: 600px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    h2 {
-      color: #144fa9;
-      font-size: 22px;
-      margin-bottom: 15px;
-    }
-    p {
-      font-size: 15px;
-      color: #333;
-      line-height: 1.6;
-    }
-    .footer {
-      margin-top: 20px;
-      font-size: 13px;
-      color: #777;
-      text-align: center;
-    }
-    .footer a {
-      color: #144fa9;
-      text-decoration: none;
-    }
+    body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; margin: 0; }
+    .container { background-color: #ffffff; border-radius: 8px; padding: 30px; margin: auto; max-width: 600px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #144fa9; padding: 30px; border-radius: 6px; text-align: center; margin-bottom: 25px; }
+    .header h1 { color: #ffffff; margin: 0; font-size: 26px; }
+    p { font-size: 15px; color: #333; line-height: 1.7; }
+    .btn { display: inline-block; padding: 12px 30px; background-color: #144fa9; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; margin: 20px 0; }
+    .footer { margin-top: 25px; font-size: 13px; color: #777; text-align: center; border-top: 1px solid #eee; padding-top: 15px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Welcome to Wiznovy</h2>
-    <p>Dear ${name},</p>
-    <p>We are pleased to inform you that your account with <b>Wiznovy</b> has been successfully created on <b>${joinDate}</b>.</p>
-    <p>You may now log in to your dashboard and access your account at any time.</p>
-    <p>Thank you for registering with us.</p>
-    <p>Best regards,<br><b>The Wiznovy Team</b></p>
+    <div class="header">
+      <h1>Welcome to Wiznovy!</h1>
+    </div>
+    <p>Hi <strong>${name}</strong>,</p>
+    <p>Welcome to Wiznovy! Your student account has been created successfully.</p>
+    <p>Explore tutors, browse courses, and start your learning journey today.</p>
+    <div style="text-align: center;">
+      <a href="${dashboardLink}" class="btn">Go to Dashboard</a>
+    </div>
+    <p>If you have any questions, feel free to reach out to our support team.</p>
+    <p>Happy learning!<br><strong>The Wiznovy Team</strong></p>
     <div class="footer">
-      <p>Wiznovy Inc.<br>
-      wiznovy@gmail.com | +91-1234567890</p>
-      <a href="#">Unsubscribe</a>
+      <p>Wiznovy Inc. | wiznovy@gmail.com</p>
     </div>
   </div>
 </body>
 </html>
-      `,
+        `,
       });
     } catch (error) {
       this.logger.error('Failed to send welcome email:', error);
@@ -300,69 +294,39 @@ export class NodeMailerService {
     return await this.mailService.sendMail({
       to: email,
       from: 'wiznovy@gmail.com',
-      subject: 'Welcome to Wiznovy Tutor Platform – Profile Under Review',
+      subject: 'Welcome to Wiznovy - Application Submitted',
       html: `
-      <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Tutor Registration – Wiznovy</title>
+  <title>Tutor Application Submitted - Wiznovy</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      padding: 20px;
-      margin: 0;
-    }
-    .container {
-      background-color: #ffffff;
-      border-radius: 8px;
-      padding: 25px;
-      margin: auto;
-      max-width: 600px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    h2 {
-      color: #144fa9;
-      font-size: 22px;
-      margin-bottom: 15px;
-    }
-    p {
-      font-size: 15px;
-      color: #333;
-      line-height: 1.6;
-    }
-    .highlight {
-      color: #144fa9;
-      font-weight: bold;
-    }
-    .footer {
-      margin-top: 20px;
-      font-size: 13px;
-      color: #777;
-      text-align: center;
-    }
-    .footer a {
-      color: #144fa9;
-      text-decoration: none;
-    }
+    body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; margin: 0; }
+    .container { background-color: #ffffff; border-radius: 8px; padding: 30px; margin: auto; max-width: 600px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #144fa9; padding: 30px; border-radius: 6px; text-align: center; margin-bottom: 25px; }
+    .header h1 { color: #ffffff; margin: 0; font-size: 24px; }
+    p { font-size: 15px; color: #333; line-height: 1.7; }
+    .status-box { background-color: #fff8e1; border-left: 4px solid #ffc107; padding: 15px 20px; border-radius: 6px; margin: 20px 0; }
+    .status-box p { margin: 0; color: #856404; font-weight: bold; }
+    .steps { background-color: #f0f4ff; border-radius: 6px; padding: 20px; margin: 20px 0; }
+    .steps p { margin: 6px 0; font-size: 14px; color: #333; }
+    .footer { margin-top: 25px; font-size: 13px; color: #777; text-align: center; border-top: 1px solid #eee; padding-top: 15px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Welcome to Wiznovy Tutor Platform</h2>
-    <p>Dear ${name},</p>
-    <p>Thank you for registering as a <b>Tutor</b> on <b>Wiznovy</b> on <b>${joinDate}</b>.</p>
-    <p>Your profile is currently <span class="highlight">under review</span> by our verification team. 
-    This process ensures that our students are matched with verified and high-quality tutors.</p>
-    <p>Once your profile is approved, you will receive an email notification, 
-    and you can start connecting with students right away!</p>
-    <p>We appreciate your patience and look forward to having you on board.</p>
-    <p>Best regards,<br><b>The Wiznovy Team</b></p>
-    <div class="footer">
-      <p>Wiznovy Inc.<br>
-      wiznovy@gmail.com | +91-1234567890</p>
-      <a href="#">Unsubscribe</a>
+    <div class="header">
+      <h1>Application Submitted!</h1>
+    </div>
+    <p>Hi <strong>${name}</strong>,</p>
+    <p>Thank you for applying to teach on Wiznovy! Your tutor application has been submitted and is currently under review.</p>
+    <div class="status-box">
+      <p>⏳ Status: Under Review</p>
+    </div>
+    <p>Our team will verify your credentials and notify you once your profile is approved. This usually takes <strong>1-2 business days</strong>.</p>
+    
+      <p>Wiznovy Inc. | wiznovy@gmail.com</p>
     </div>
   </div>
 </body>
@@ -377,30 +341,75 @@ export class NodeMailerService {
 
 
 
-  async purchaseSuccessEmail(email: string, itemName: string, amount: number) {
+  async purchaseSuccessEmail(email: string, studentName: string, itemName: string, amount: number, transactionId: string, date: string, invoiceBuffer?: Buffer) {
     try {
-      return await this.mailService.sendMail({
+      const mailOptions: any = {
         to: email,
-        subject: 'Purchase Successful - Wiznovy Team',
+        subject: `Payment confirmed - $${amount}`,
         html: `
         <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
-          <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; max-width: 600px; margin: 0 auto; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
-            <div style="background: #28a745; padding: 30px; border-radius: 4px; color: #fff; text-align: center; margin: 20px 0px;">
-              <div style="font-size: 25px;">Purchase Successful!</div>
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #28a745; padding: 25px; border-radius: 6px; text-align: center; margin-bottom: 25px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">✅ Payment Confirmed!</h1>
             </div>
-            <h2 style="text-align: center;">Thank you for your purchase</h2>
-            <p style="text-align: center;"><strong>Item:</strong> ${itemName}</p>
-            <p style="text-align: center;"><strong>Amount:</strong> ₹${amount}</p>
-            <p style="text-align: center;">You can now access your purchased content. Happy learning!</p>
-            <div style="color: #6c757d; font-size: 14px; text-align: center; margin-top: 20px;">
-              <p>Thank you,<br /> Wiznovy  Team</p>
+            <p>Hi <strong>${studentName}</strong>,</p>
+            <p>Your payment of <strong>$${amount}</strong> has been processed successfully.</p>
+            <div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+              <p style="margin: 6px 0;"><strong>Transaction ID:</strong> ${transactionId}</p>
+              <p style="margin: 6px 0;"><strong>Details:</strong> ${itemName}</p>
+              <p style="margin: 6px 0;"><strong>Date:</strong> ${date}</p>
+              <p style="margin: 6px 0;"><strong>Amount:</strong> $${amount}</p>
+            </div>
+            ${invoiceBuffer ? '<p>Your invoice is attached to this email.</p>' : ''}
+            <p>View your payment history in the Dashboard.</p>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; border-top: 1px solid #eee; padding-top: 15px; margin-top: 20px;">
+              <p>Wiznovy Team</p>
             </div>
           </div>
-        </div>
-        `,
-      });
+        </div>`,
+      };
+      if (invoiceBuffer) {
+        mailOptions.attachments = [{ filename: `invoice-${transactionId}.pdf`, content: invoiceBuffer, contentType: 'application/pdf' }];
+      }
+      return await this.mailService.sendMail(mailOptions);
     } catch (error) {
       this.logger.error('Error sending purchase success email:', error);
+    }
+  }
+
+  async sendPaymentPendingEmail(email: string, studentName: string, itemName: string, amount: number, transactionId: string, invoiceBuffer?: Buffer) {
+    try {
+      const mailOptions: any = {
+        to: email,
+        subject: `Payment pending - $${amount}`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #ffc107; padding: 25px; border-radius: 6px; text-align: center; margin-bottom: 25px;">
+              <h1 style="color: #000; margin: 0; font-size: 22px;">⏳ Payment Pending</h1>
+            </div>
+            <p>Hi <strong>${studentName}</strong>,</p>
+            <p>Your payment of <strong>$${amount}</strong> is currently being processed.</p>
+            <div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+              <p style="margin: 6px 0;"><strong>Transaction ID:</strong> ${transactionId}</p>
+              <p style="margin: 6px 0;"><strong>Details:</strong> ${itemName}</p>
+              <p style="margin: 6px 0;"><strong>Status:</strong> Pending</p>
+            </div>
+            ${invoiceBuffer ? '<p>Your payment record is attached to this email.</p>' : ''}
+            <p>We will notify you once the payment is confirmed.</p>
+            <p>Contact <a href="mailto:support@wiznovy.com" style="color: #144fa9;">support@wiznovy.com</a> if this takes longer than expected.</p>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; border-top: 1px solid #eee; padding-top: 15px; margin-top: 20px;">
+              <p>Wiznovy Team</p>
+            </div>
+          </div>
+        </div>`,
+      };
+      if (invoiceBuffer) {
+        mailOptions.attachments = [{ filename: 'payment-record.pdf', content: invoiceBuffer, contentType: 'application/pdf' }];
+      }
+      return await this.mailService.sendMail(mailOptions);
+    } catch (error) {
+      this.logger.error('Error sending payment pending email:', error);
     }
   }
 
@@ -637,42 +646,36 @@ export class NodeMailerService {
     }
   }
 
-  async sendSessionRescheduleEmail(email: string, studentName: string, tutorName: string, oldSchedule: { date: string; startTime: string; endTime: string }, newSchedule: { date: string; startTime: string; endTime: string }, rescheduledBy: string) {
+  async sendSessionRescheduleEmail(email: string, studentName: string, tutorName: string, oldSchedule: { date: string; startTime: string; endTime: string }, newSchedule: { date: string; startTime: string; endTime: string }, rescheduledBy: string, subject?: string, timezone?: string) {
     try {
+      const subjectLine = rescheduledBy === 'tutor' ? 'Session rescheduled successfully' : 'Session Rescheduled - Wiznovy';
+      const timezone_ = timezone || process.env.APP_TIMEZONE || 'UTC';
       return await this.mailService.sendMail({
         to: email,
-        subject: 'Session Rescheduled - Wiznovy',
+        subject: subjectLine,
         html: `
         <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
-          <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; max-width: 600px; margin: 0 auto; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);">
-            <div style="background: #17a2b8; padding: 30px; border-radius: 4px; color: #fff; text-align: center; margin: 20px 0px;">
-              <div style="font-size: 25px;">Session Rescheduled</div>
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #17a2b8; padding: 25px; border-radius: 6px; text-align: center; margin-bottom: 25px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">Session Rescheduled</h1>
             </div>
-            <h2 style="text-align: center;">Schedule Update</h2>
-            <p style="text-align: center;">Dear ${studentName},</p>
-            <p style="text-align: center;">Your session has been rescheduled ${rescheduledBy === 'student' ? 'as requested' : 'by the tutor'}.</p>
-            
-            <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
-              <h4 style="margin: 0 0 10px 0; color: #856404;">Previous Schedule:</h4>
-              <p style="margin: 5px 0;"><strong>Tutor:</strong> ${tutorName}</p>
-              <p style="margin: 5px 0;"><strong>Date:</strong> ${oldSchedule.date}</p>
-              <p style="margin: 5px 0;"><strong>Time:</strong> ${oldSchedule.startTime} - ${oldSchedule.endTime}</p>
+            <p>Hi <strong>${studentName}</strong>,</p>
+            <p>Your${subject ? ` <strong>${subject}</strong>` : ''} session has been successfully rescheduled.</p>
+            <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 6px; margin: 20px 0;">
+              <p style="margin: 0 0 5px 0; font-weight: bold; color: #856404;">Previous Schedule</p>
+              <p style="margin: 4px 0;">${oldSchedule.date} at ${oldSchedule.startTime}</p>
             </div>
-            
-            <div style="background-color: #d1ecf1; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #17a2b8;">
-              <h4 style="margin: 0 0 10px 0; color: #0c5460;">New Schedule:</h4>
-              <p style="margin: 5px 0;"><strong>Tutor:</strong> ${tutorName}</p>
-              <p style="margin: 5px 0;"><strong>Date:</strong> ${newSchedule.date}</p>
-              <p style="margin: 5px 0;"><strong>Time:</strong> ${newSchedule.startTime} - ${newSchedule.endTime}</p>
+            <div style="background-color: #d1ecf1; border-left: 4px solid #17a2b8; padding: 15px; border-radius: 6px; margin: 20px 0;">
+              <p style="margin: 0 0 5px 0; font-weight: bold; color: #0c5460;">New Schedule</p>
+              <p style="margin: 4px 0;">${newSchedule.date} at ${newSchedule.startTime} (${timezone_})</p>
             </div>
-            
-            <p style="text-align: center;">Please make note of the new schedule. We'll send you reminder notifications before your session.</p>
-            <div style="color: #6c757d; font-size: 14px; text-align: center; margin-top: 20px;">
-              <p>Thank you,<br />Wiznovy Team</p>
+            <p>No charges have been applied.</p>
+            <p>An updated Zoom link will be shared shortly.</p>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; border-top: 1px solid #eee; padding-top: 15px; margin-top: 20px;">
+              <p>Regards,<br/>Team</p>
             </div>
           </div>
-        </div>
-        `,
+        </div>`,
       });
     } catch (error) {
       this.logger.error('Error sending session reschedule email:', error);
@@ -713,6 +716,32 @@ export class NodeMailerService {
       });
     } catch (error) {
       this.logger.error('Error sending new message notification:', error);
+    }
+  }
+
+  async sendPayoutRequestEmail(email: string, tutorName: string, amount: number) {
+    try {
+      return await this.mailService.sendMail({
+        to: email,
+        subject: `Payout request received: $${amount}`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #144fa9; padding: 25px; border-radius: 6px; text-align: center; margin-bottom: 25px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">Payout Request Received</h1>
+            </div>
+            <p>Hi <strong>${tutorName}</strong>,</p>
+            <p>Your payout of <strong>$${amount}</strong> has been submitted and is currently being reviewed.</p>
+            <p>You will receive a confirmation once it has been processed.</p>
+            <p><strong>Estimated time:</strong> 3–5 business days.</p>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; border-top: 1px solid #eee; padding-top: 15px; margin-top: 20px;">
+              <p>Regards,<br/>Team</p>
+            </div>
+          </div>
+        </div>`,
+      });
+    } catch (error) {
+      this.logger.error('Error sending payout request email:', error);
     }
   }
 
@@ -834,7 +863,6 @@ export class NodeMailerService {
             
             <div style="background-color: #e7f3ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #007bff;">
               <h3 style="margin: 0 0 15px 0; color: #0056b3;">🎥 Join Your Session</h3>
-              ${zoomDetails.joinUrl ? `<p style="margin: 5px 0;"><strong>Join URL:</strong> <a href="${zoomDetails.joinUrl}" style="color: #007bff; word-break: break-all;">${zoomDetails.joinUrl}</a></p>` : ''}
               ${zoomDetails.meetingId ? `<p style="margin: 5px 0;"><strong>Meeting ID:</strong> <span style="font-family: monospace; background: #f8f9fa; padding: 2px 6px; border-radius: 3px;">${zoomDetails.meetingId}</span></p>` : ''}
               ${zoomDetails.passcode ? `<p style="margin: 5px 0;"><strong>Passcode:</strong> <span style="font-family: monospace; background: #f8f9fa; padding: 2px 6px; border-radius: 3px;">${zoomDetails.passcode}</span></p>` : ''}
               
@@ -861,6 +889,325 @@ export class NodeMailerService {
       });
     } catch (error) {
       this.logger.error('Error sending user session confirmation:', error);
+    }
+  }
+
+  async sendCourseRejectedEmail(dto: {
+    email: string;
+    tutorName: string;
+    courseName: string;
+    rejectionReason: string;
+    editLink: string;
+  }) {
+    try {
+      return await this.mailService.sendMail({
+        to: dto.email,
+        subject: `Your course needs revisions`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #dc3545; padding: 25px; border-radius: 6px; text-align: center; margin-bottom: 25px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">Course Needs Revisions</h1>
+            </div>
+            <p>Hi <strong>${dto.tutorName}</strong>,</p>
+            <p><strong>${dto.courseName}</strong> reviewed but requires changes.</p>
+            <div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+              <p style="margin: 6px 0;"><strong>Reason:</strong> ${dto.rejectionReason}</p>
+            </div>
+            <p>Update and resubmit: <a href="${dto.editLink}" style="color: #144fa9; font-weight: bold;">${dto.editLink}</a></p>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; border-top: 1px solid #eee; padding-top: 15px; margin-top: 20px;">
+              <p>Wiznovy Team</p>
+            </div>
+          </div>
+        </div>`,
+      });
+    } catch (error) {
+      this.logger.error('Error sending course rejected email:', error);
+    }
+  }
+
+  async sendCourseApprovedEmail(dto: {
+    email: string;
+    tutorName: string;
+    courseName: string;
+    courseLink: string;
+  }) {
+    try {
+      return await this.mailService.sendMail({
+        to: dto.email,
+        subject: `Your course has been approved!`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #28a745; padding: 25px; border-radius: 6px; text-align: center; margin-bottom: 25px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">Course Approved!</h1>
+            </div>
+            <p>Hi <strong>${dto.tutorName}</strong>,</p>
+            <p><strong>${dto.courseName}</strong> reviewed and approved. Now visible to students in Browse Courses.</p>
+            <p>View: <a href="${dto.courseLink}" style="color: #144fa9; font-weight: bold;">${dto.courseLink}</a></p>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; border-top: 1px solid #eee; padding-top: 15px; margin-top: 20px;">
+              <p>Wiznovy Team</p>
+            </div>
+          </div>
+        </div>`,
+      });
+    } catch (error) {
+      this.logger.error('Error sending course approved email:', error);
+    }
+  }
+
+  async sendTutorCourseEnrollmentNotification(dto: {
+    email: string;
+    tutorName: string;
+    studentName: string;
+    courseName: string;
+    enrollmentCount: number;
+    dashboardLink: string;
+  }) {
+    try {
+      return await this.mailService.sendMail({
+        to: dto.email,
+        subject: `New enrollment in ${dto.courseName}`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #144fa9; padding: 25px; border-radius: 6px; text-align: center; margin-bottom: 25px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">New Enrollment!</h1>
+            </div>
+            <p>Hi <strong>${dto.tutorName}</strong>,</p>
+            <p><strong>${dto.studentName}</strong> enrolled in <strong>${dto.courseName}</strong>.</p>
+            <div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+              <p style="margin: 6px 0;"><strong>Total enrollments:</strong> ${dto.enrollmentCount}</p>
+            </div>
+            <p>View analytics in <a href="${dto.dashboardLink}" style="color: #144fa9; font-weight: bold;">Dashboard</a>.</p>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; border-top: 1px solid #eee; padding-top: 15px; margin-top: 20px;">
+              <p>Wiznovy Team</p>
+            </div>
+          </div>
+        </div>`,
+      });
+    } catch (error) {
+      this.logger.error('Error sending tutor course enrollment notification:', error);
+    }
+  }
+
+  async sendCourseEnrollmentConfirmation(dto: {
+    email: string;
+    studentName: string;
+    courseName: string;
+    tutorName: string;
+    amount: number;
+    courseLink: string;
+  }) {
+    try {
+      return await this.mailService.sendMail({
+        to: dto.email,
+        subject: `You are enrolled in ${dto.courseName}!`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #144fa9; padding: 25px; border-radius: 6px; text-align: center; margin-bottom: 25px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">Enrollment Confirmed!</h1>
+            </div>
+            <p>Hi <strong>${dto.studentName}</strong>,</p>
+            <p>You are enrolled in <strong>${dto.courseName}</strong> by <strong>${dto.tutorName}</strong>.</p>
+            <div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+              <p style="margin: 6px 0;"><strong>Amount:</strong> $${dto.amount}</p>
+            </div>
+            <p>Access from My Learnings: <a href="${dto.courseLink}" style="color: #144fa9; font-weight: bold;">${dto.courseLink}</a></p>
+            <p>Happy learning!</p>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; border-top: 1px solid #eee; padding-top: 15px; margin-top: 20px;">
+              <p>Wiznovy Team</p>
+            </div>
+          </div>
+        </div>`,
+      });
+    } catch (error) {
+      this.logger.error('Error sending course enrollment confirmation:', error);
+    }
+  }
+
+  async sendPaymentFailedEmail(email: string, studentName: string, amount: number, failureReason: string, invoiceBuffer?: Buffer) {
+    const paymentLink = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/dashboard/payments` : 'https://wiznovy.com/dashboard/payments';
+    try {
+      const mailOptions: any = {
+        to: email,
+        subject: 'Payment failed - action needed',
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #dc3545; padding: 25px; border-radius: 6px; text-align: center; margin-bottom: 25px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">Payment Failed</h1>
+            </div>
+            <p>Hi <strong>${studentName}</strong>,</p>
+            <p>Unable to process <strong>$${amount}</strong>.</p>
+            <div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+              <p style="margin: 6px 0;"><strong>Reason:</strong> ${failureReason}</p>
+            </div>
+            ${invoiceBuffer ? '<p>Your payment record is attached to this email.</p>' : ''}
+            <p>Update your payment method: <a href="${paymentLink}" style="color: #144fa9; font-weight: bold;">${paymentLink}</a></p>
+            <p>Your booking is held for <strong>24 hours</strong>.</p>
+            <p>Contact <a href="mailto:support@wiznovy.com" style="color: #144fa9;">support@wiznovy.com</a> if issue persists.</p>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; border-top: 1px solid #eee; padding-top: 15px; margin-top: 20px;">
+              <p>Wiznovy Team</p>
+            </div>
+          </div>
+        </div>`,
+      };
+      if (invoiceBuffer) {
+        mailOptions.attachments = [{ filename: 'payment-record.pdf', content: invoiceBuffer, contentType: 'application/pdf' }];
+      }
+      return await this.mailService.sendMail(mailOptions);
+    } catch (error) {
+      this.logger.error('Error sending payment failed email:', error);
+    }
+  }
+
+  async sendTutorTrialSessionNotification(dto: {
+    email: string;
+    tutorName: string;
+    studentName: string;
+    subject: string;
+    date: string;
+    time: string;
+    timezone: string;
+  }) {
+    try {
+      return await this.mailService.sendMail({
+        to: dto.email,
+        subject: `New trial session: ${dto.subject} with ${dto.studentName}`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #144fa9; padding: 25px; border-radius: 6px; text-align: center; margin-bottom: 25px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">New Trial Session Booked!</h1>
+            </div>
+            <p>Hi <strong>${dto.tutorName}</strong>,</p>
+            <p><strong>${dto.studentName}</strong> booked a 25-minute trial for <strong>${dto.subject}</strong>.</p>
+            <div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+              <p style="margin: 6px 0;"><strong>Date:</strong> ${dto.date}</p>
+              <p style="margin: 6px 0;"><strong>Time:</strong> ${dto.time} (${dto.timezone})</p>
+            </div>
+            <p>Make a great first impression!</p>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; border-top: 1px solid #eee; padding-top: 15px; margin-top: 20px;">
+              <p>Wiznovy Team</p>
+            </div>
+          </div>
+        </div>`,
+      });
+    } catch (error) {
+      this.logger.error('Error sending tutor trial session notification:', error);
+    }
+  }
+
+  async sendTrialSessionConfirmation(dto: {
+    email: string;
+    studentName: string;
+    tutorName: string;
+    subject: string;
+    date: string;
+    time: string;
+    timezone: string;
+    amount: number;
+  }) {
+    try {
+      return await this.mailService.sendMail({
+        to: dto.email,
+        subject: `Your trial session with ${dto.tutorName} is confirmed`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #144fa9; padding: 25px; border-radius: 6px; text-align: center; margin-bottom: 25px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">Trial Session Confirmed!</h1>
+            </div>
+            <p>Hi <strong>${dto.studentName}</strong>,</p>
+            <p>Your 25-minute trial with <strong>${dto.tutorName}</strong> for <strong>${dto.subject}</strong> is confirmed!</p>
+            <div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+              <p style="margin: 6px 0;"><strong>Date:</strong> ${dto.date}</p>
+              <p style="margin: 6px 0;"><strong>Time:</strong> ${dto.time} (${dto.timezone})</p>
+              <p style="margin: 6px 0;"><strong>Amount:</strong> $${dto.amount}</p>
+            </div>
+            <p>Great opportunity to see if <strong>${dto.tutorName}</strong> is the right fit.</p>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; border-top: 1px solid #eee; padding-top: 15px; margin-top: 20px;">
+              <p>Wiznovy Team</p>
+            </div>
+          </div>
+        </div>`,
+      });
+    } catch (error) {
+      this.logger.error('Error sending trial session confirmation:', error);
+    }
+  }
+
+  async sendSessionBookingNotification(dto: {
+    email: string;
+    recipientName: string;
+    tutorName: string;
+    studentName: string;
+    subject: string;
+    date: string;
+    time: string;
+    timezone: string;
+    duration: number;
+    dashboardLink: string;
+  }) {
+    try {
+      return await this.mailService.sendMail({
+        to: dto.email,
+        subject: `New session booking: ${dto.subject} with ${dto.studentName}`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 30px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="background: #144fa9; padding: 25px; border-radius: 6px; text-align: center; margin-bottom: 25px;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">New Session Booking</h1>
+            </div>
+            <p>Hi <strong>${dto.recipientName}</strong>,</p>
+            <p><strong>${dto.studentName}</strong> has booked a <strong>${dto.subject}</strong> session.</p>
+            <div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin: 20px 0;">
+              <p style="margin: 6px 0;"><strong>Date:</strong> ${dto.date}</p>
+              <p style="margin: 6px 0;"><strong>Time:</strong> ${dto.time} (${dto.timezone})</p>
+              <p style="margin: 6px 0;"><strong>Duration:</strong> ${dto.duration} min</p>
+            </div>
+            <div style="text-align: center; margin: 25px 0;">
+              <a href="${dto.dashboardLink}" style="display: inline-block; padding: 12px 30px; background-color: #144fa9; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold;">View in Dashboard</a>
+            </div>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; border-top: 1px solid #eee; padding-top: 15px;">
+              <p>Wiznovy Team</p>
+            </div>
+          </div>
+        </div>`,
+      });
+    } catch (error) {
+      this.logger.error('Error sending session booking notification:', error);
+    }
+  }
+
+  async sendProfileUpdateEmail(email: string, firstName: string, changesList: string[]) {
+    const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+    const changesHtml = changesList.map(c => `<li>${c}</li>`).join('');
+    try {
+      return await this.mailService.sendMail({
+        to: email,
+        subject: 'Your profile has been updated',
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+          <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; max-width: 600px; margin: 0 auto; box-shadow: 0px 0px 10px rgba(0,0,0,0.1);">
+            <div style="background: #144fa9; padding: 25px; border-radius: 6px; color: #fff; text-align: center; margin-bottom: 20px;">
+              <div style="font-size: 22px;">Profile Updated</div>
+            </div>
+            <p>Hi <strong>${firstName}</strong>,</p>
+            <p>Your profile was updated on <strong>${date}</strong>.</p>
+            <p><strong>Changes made:</strong></p>
+            <ul>${changesHtml}</ul>
+            <p style="color: #dc3545;">If you did not make these changes, contact support immediately at <a href="mailto:support@wiznovy.com">support@wiznovy.com</a>.</p>
+            <div style="color: #6c757d; font-size: 13px; text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+              <p>Wiznovy Team</p>
+            </div>
+          </div>
+        </div>`,
+      });
+    } catch (error) {
+      this.logger.error('Error sending profile update email:', error);
     }
   }
 
@@ -899,7 +1246,6 @@ export class NodeMailerService {
             
             <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
               <h3 style="margin: 0 0 15px 0; color: #856404;">🎥 Host Your Session</h3>
-              ${zoomDetails.startUrl ? `<p style="margin: 5px 0;"><strong>Start Meeting:</strong> <a href="${zoomDetails.startUrl}" style="color: #856404; word-break: break-all;">${zoomDetails.startUrl}</a></p>` : ''}
               ${zoomDetails.meetingId ? `<p style="margin: 5px 0;"><strong>Meeting ID:</strong> <span style="font-family: monospace; background: #fff; padding: 2px 6px; border-radius: 3px;">${zoomDetails.meetingId}</span></p>` : ''}
               ${zoomDetails.passcode ? `<p style="margin: 5px 0;"><strong>Passcode:</strong> <span style="font-family: monospace; background: #fff; padding: 2px 6px; border-radius: 3px;">${zoomDetails.passcode}</span></p>` : ''}
               

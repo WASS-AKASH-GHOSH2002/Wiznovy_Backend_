@@ -1,16 +1,15 @@
 import { Account } from 'src/account/entities/account.entity';
 import { Course } from 'src/course/entities/course.entity';
-import { Session } from 'src/session/entities/session.entity';
-import { PaymentStatus, PurchaseType, DefaultStatus } from 'src/enum';
+import { PaymentStatus, PaymentMethod } from 'src/enum';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-
 
 @Entity()
 export class UserPurchase {
@@ -20,17 +19,8 @@ export class UserPurchase {
   @Column({ type: 'uuid' })
   accountId: string;
 
-  @Column({ type: 'enum', enum: PurchaseType })
-  purchaseType: PurchaseType;
-
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'uuid' })
   courseId: string;
-
-  @Column({ type: 'uuid', nullable: true })
-  sessionId: string;
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  merchantOrderId: string;
 
   @Column({ type: 'varchar', length: 50, unique: true, nullable: true })
   orderNumber: string;
@@ -41,32 +31,17 @@ export class UserPurchase {
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   originalAmount: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  discountAmount: number;
-
   @Column({ type: 'varchar', length: 50, nullable: true })
-  couponCode: string;
+  paymentMethod: string;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   transactionId: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  paymentIntentId: string;
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  stripePaymentIntentId: string;
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  stripeChargeId: string;
-
-  @Column({ type: 'datetime', nullable: true })
-  paidAt: Date;
-
   @Column({ type: 'enum', enum: PaymentStatus, default: PaymentStatus.PENDING })
   paymentStatus: PaymentStatus;
 
-  @Column({ type: 'enum', enum: DefaultStatus, default: DefaultStatus.ACTIVE })
-  status: DefaultStatus;
+  @Column({ type: 'datetime', nullable: true })
+  paidAt: Date;
 
   @Column({ type: 'datetime', nullable: true })
   expiresAt: Date;
@@ -78,11 +53,10 @@ export class UserPurchase {
   updatedAt: Date;
 
   @ManyToOne(() => Account, (account) => account.userPurchases, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'accountId' })
   account: Account;
 
-  @ManyToOne(() => Course, { nullable: true })
+  @ManyToOne(() => Course, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'courseId' })
   course: Course;
-
-  @ManyToOne(() => Session, { nullable: true })
-  session: Session;
 }

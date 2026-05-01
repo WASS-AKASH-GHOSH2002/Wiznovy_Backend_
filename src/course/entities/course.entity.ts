@@ -10,7 +10,6 @@ import {
 import { Rating } from '../../rating/entities/rating.entity';
 import { Subject } from '../../subjects/entities/subject.entity';
 import { Language } from '../../languages/entities/language.entity';
-import { Class } from '../../class/entities/class.entity';
 import { AccessTypes, CourseStatus } from '../../enum';
 import { Unit } from '../../unit/entities/unit.entity';
 import { UserProgress } from '../../user-progress/entities/user-progress.entity';
@@ -27,12 +26,6 @@ export class Course {
 
   @Column({ type: 'text', nullable: true })
   description: string;
-
-  @Column({ type: 'varchar', length: 500, nullable: true })
-  imageUrl: string;
-
-  @Column({ type: 'varchar', length: 500, nullable: true })
-  imagepath: string;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   thumbnailpath: string;
@@ -88,6 +81,9 @@ endDate: Date;
   @Column({ type: 'uuid', nullable: false })
   tutorId: string;
 
+  @Column({ type: 'boolean', default: false })
+  topCourse: boolean;
+
   @Column({ type: 'text', nullable: true })
   deletionReason: string;
 
@@ -108,12 +104,6 @@ endDate: Date;
     onUpdate: 'CASCADE',
   })
   language: Language;
-
-  @ManyToOne(() => Class, (classEntity) => classEntity.courses, {
-    onDelete: 'SET NULL',
-    onUpdate: 'CASCADE',
-  })
-  class: Class;
 
   @OneToMany(() => Rating, (rating) => rating.course)
   ratings: Rating[];

@@ -1,9 +1,11 @@
 import { Account } from 'src/account/entities/account.entity';
+import { Designation } from 'src/designations/entities/designation.entity';
 import { Gender } from 'src/enum';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -16,9 +18,12 @@ export class StaffDetail {
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   name: string;
-  
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  email: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true, unique: true })
+  staffId: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  designationId: string;
 
   @Column({ type: 'date', nullable: true })
   dob: string;
@@ -56,4 +61,11 @@ export class StaffDetail {
     onUpdate: 'CASCADE',
   })
   account: Account[];
+
+  @ManyToOne(() => Designation, (designation) => designation.staffDetails, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'designationId' })
+  designation: Designation;
 }

@@ -54,3 +54,25 @@ export class TutorSlotDto {
   @IsUUID()
   tutorId: string;
 }
+
+export class BlockSlotDto {
+  @ApiProperty({ example: '2025-06-15' })
+  @IsNotEmpty()
+  @IsString()
+  blockDate: string;
+
+  @ApiProperty({ example: '09:00' })
+  @IsNotEmpty()
+  @IsString()
+  startTime: string;
+
+  @ApiProperty({ example: '11:00' })
+  @IsNotEmpty()
+  @IsString()
+  endTime: string;
+
+  @ApiPropertyOptional({ example: 'Personal appointment' })
+  @IsOptional()
+  @IsString()
+  reason: string;
+}
