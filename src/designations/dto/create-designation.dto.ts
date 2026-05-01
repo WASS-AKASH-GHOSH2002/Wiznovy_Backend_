@@ -5,6 +5,8 @@ import {
   IsOptional,
   IsNumber,
   IsString,
+  IsArray,
+  ArrayMinSize,
   Max,
   MaxLength,
   Min,
@@ -14,29 +16,26 @@ import { DefaultStatus } from 'src/enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateDesignationDto {
-  @ApiProperty({ example: 'Software Engineer', maxLength: 255 })
+  @ApiProperty({ example: 'Software Engineer', minLength: 2, maxLength: 255 })
   @IsNotEmpty()
   @IsString()
+  @MinLength(2)
   @MaxLength(255)
   name: string;
 }
 
 export class UpdateDesignationDto {
-  @ApiPropertyOptional({ example: 'Senior Engineer', maxLength: 255 })
+  @ApiPropertyOptional({ example: 'Senior Engineer', minLength: 2, maxLength: 255 })
   @IsOptional()
   @IsString()
+  @MinLength(2)
   @MaxLength(255)
   name: string;
-
-  @ApiPropertyOptional({ enum: DefaultStatus, example: DefaultStatus.ACTIVE })
-  @IsOptional()
-  @IsEnum(DefaultStatus)
-  status: DefaultStatus;
 }
 
 export class DesignationStatusDto {
-  @ApiPropertyOptional({ enum: DefaultStatus, example: DefaultStatus.ACTIVE })
-  @IsOptional()
+  @ApiProperty({ enum: DefaultStatus, example: DefaultStatus.ACTIVE })
+  @IsNotEmpty()
   @IsEnum(DefaultStatus)
   status: DefaultStatus;
 }
@@ -73,6 +72,8 @@ export class DesignationPaginationDto {
 export class BulkDesignationStatusDto {
   @ApiProperty({ example: ['id1', 'id2'], description: 'Array of designation IDs' })
   @IsNotEmpty()
+  @IsArray()
+  @ArrayMinSize(1)
   @IsString({ each: true })
   ids: string[];
 

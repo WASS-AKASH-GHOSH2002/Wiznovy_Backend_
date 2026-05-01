@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets, Not } from 'typeorm';
+import { Repository, Brackets, Not, In } from 'typeorm';
 import { Designation } from './entities/designation.entity';
 import { CreateDesignationDto, UpdateDesignationDto, DesignationStatusDto, DesignationPaginationDto, BulkDesignationStatusDto } from './dto/create-designation.dto';
 import { DefaultStatus } from 'src/enum';
@@ -13,10 +13,11 @@ export class DesignationsService {
   ) {}
 
   async create(dto: CreateDesignationDto) {
-    const existing = await this.repo.findOne({ where: { name: dto.name } });
-    if (existing) {
-      throw new ConflictException('Designation with this name already exists');
-    }
+    const existing = await this.repo
+      .createQueryBuilder('d')
+      .where('LOWER(d.name) = LOWER(:name)', { name: dto.name })
+      .getOne();
+    if (existing) throw new ConflictException('Designation with this name already exists');
     return this.repo.save(dto);
   }
 
@@ -71,10 +72,12 @@ export class DesignationsService {
 
   async update(id: string, dto: UpdateDesignationDto) {
     if (dto.name) {
-      const existing = await this.repo.findOne({ where: { name: dto.name, id: Not(id) } });
-      if (existing) {
-        throw new ConflictException('Designation with this name already exists');
-      }
+      const existing = await this.repo
+        .createQueryBuilder('d')
+        .where('LOWER(d.name) = LOWER(:name)', { name: dto.name })
+        .andWhere('d.id != :id', { id })
+        .getOne();
+      if (existing) throw new ConflictException('Designation with this name already exists');
     }
     const result = await this.findOne(id);
     const obj = Object.assign(result, dto);
@@ -94,7 +97,7 @@ export class DesignationsService {
   }
 
   async bulkUpdateStatus(dto: BulkDesignationStatusDto) {
-    await this.repo.update(dto.ids, { status: dto.status });
+    await this.repo.update({ id: In(dto.ids) }, { status: dto.status });
     return { message: `${dto.ids.length} designations status updated successfully` };
   }
 }
