@@ -351,18 +351,18 @@ export class PaymentService {
         process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (error) {
-      throw new BadRequestException(`Webhook signature verification failed: ${error.message}`);
+      throw new BadRequestException(`Webhook signature verification failed: ${(error as Error).message}`);
     }
 
     switch (event.type) {
-      case 'checkout.session.completed':
-        const session = event.data.object as Stripe.Checkout.Session;
-        if (session.metadata?.type === 'wallet_topup') {
 
-          break;
+      case 'checkout.session.completed': {
+        const checkoutSess = event.data.object as Stripe.Checkout.Session;
+        if (checkoutSess.metadata?.type !== 'wallet_topup') {
+          await this.handleCheckoutSuccess(checkoutSess);
         }
-        await this.handleCheckoutSuccess(session);
         break;
+      }
       case 'payment_intent.succeeded':
         await this.handlePaymentSuccess(event.data.object);
         break;
@@ -512,7 +512,7 @@ export class PaymentService {
       
       // Set expiry date for course purchases
       if (payment.courseId && session.metadata?.validityDays) {
-        const validityDays = parseInt(session.metadata.validityDays);
+      const validityDays = Number.parseInt(session.metadata.validityDays);
         payment.expiresAt = new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000);
       }
       
@@ -523,7 +523,7 @@ export class PaymentService {
   }
 
   private async handleDispute(dispute: Stripe.Dispute) {
-
+    this.logger.warn(`Dispute received: ${dispute.id}`);
   }
 
   private async confirmSession(sessionId: string) {
@@ -611,7 +611,7 @@ export class PaymentService {
         });
       }
     } catch (error) {
-      console.error('confirmSession error:', error.message);
+      console.error('confirmSession error:', (error as Error).message);
     }
   }
 
@@ -656,7 +656,7 @@ export class PaymentService {
 
       return refund;
     } catch (error) {
-      throw new BadRequestException(`Failed to create refund: ${error.message}`);
+      throw new BadRequestException(`Failed to create refund: ${(error as Error).message}`);
     }
   }
 
@@ -760,14 +760,12 @@ export class PaymentService {
 
     if (dto.date) {
       queryBuilder.andWhere('DATE(payment.createdAt) = :date', { date: dto.date });
-    } else {
-      if (dto.fromDate && dto.toDate) {
-        queryBuilder.andWhere('DATE(payment.createdAt) BETWEEN :fromDate AND :toDate', { fromDate: dto.fromDate, toDate: dto.toDate });
-      } else if (dto.fromDate) {
-        queryBuilder.andWhere('DATE(payment.createdAt) >= :fromDate', { fromDate: dto.fromDate });
-      } else if (dto.toDate) {
-        queryBuilder.andWhere('DATE(payment.createdAt) <= :toDate', { toDate: dto.toDate });
-      }
+    } else if (dto.fromDate && dto.toDate) {
+      queryBuilder.andWhere('DATE(payment.createdAt) BETWEEN :fromDate AND :toDate', { fromDate: dto.fromDate, toDate: dto.toDate });
+    } else if (dto.fromDate) {
+      queryBuilder.andWhere('DATE(payment.createdAt) >= :fromDate', { fromDate: dto.fromDate });
+    } else if (dto.toDate) {
+      queryBuilder.andWhere('DATE(payment.createdAt) <= :toDate', { toDate: dto.toDate });
     }
 
     const [result, total] = await queryBuilder
@@ -811,14 +809,12 @@ export class PaymentService {
     }
     if (dto.date) {
       queryBuilder.andWhere('DATE(payment.createdAt) = :date', { date: dto.date });
-    } else {
-      if (dto.fromDate && dto.toDate) {
-        queryBuilder.andWhere('DATE(payment.createdAt) BETWEEN :fromDate AND :toDate', { fromDate: dto.fromDate, toDate: dto.toDate });
-      } else if (dto.fromDate) {
-        queryBuilder.andWhere('DATE(payment.createdAt) >= :fromDate', { fromDate: dto.fromDate });
-      } else if (dto.toDate) {
-        queryBuilder.andWhere('DATE(payment.createdAt) <= :toDate', { toDate: dto.toDate });
-      }
+    } else if (dto.fromDate && dto.toDate) {
+      queryBuilder.andWhere('DATE(payment.createdAt) BETWEEN :fromDate AND :toDate', { fromDate: dto.fromDate, toDate: dto.toDate });
+    } else if (dto.fromDate) {
+      queryBuilder.andWhere('DATE(payment.createdAt) >= :fromDate', { fromDate: dto.fromDate });
+    } else if (dto.toDate) {
+      queryBuilder.andWhere('DATE(payment.createdAt) <= :toDate', { toDate: dto.toDate });
     }
 
     const records = await queryBuilder.orderBy('payment.createdAt', 'DESC').getMany();
@@ -850,7 +846,7 @@ export class PaymentService {
       });
       return paymentMethods.data;
     } catch (error) {
-      throw new BadRequestException(`Failed to retrieve payment methods: ${error.message}`);
+      throw new BadRequestException(`Failed to retrieve payment methods: ${(error as Error).message}`);
     }
   }
 
@@ -1012,10 +1008,6 @@ export class PaymentService {
     if (!payment) {
       throw new NotFoundException('payment not found');
     }
-
-    // if (payment.paymentStatus !== PaymentStatus.COMPLETED) {
-    //   throw new BadRequestException('Invoice only available for completed payments');
-    // }
 
     const fileName = await this.generateInvoice(payment);
     const filePath = join(process.cwd(), 'uploads', 'invoices', fileName.fileName);

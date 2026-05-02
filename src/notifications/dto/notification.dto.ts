@@ -20,11 +20,11 @@ export class NotificationDto {
 
 export class NotificationFilterDto {
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => Number.parseInt(value))
   limit: number = 10;
 
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => Number.parseInt(value))
   offset: number = 0;
 
   @IsOptional()

@@ -81,7 +81,6 @@ export class AuthService {
       throw new CustomException(MESSAGE_CODES.AUTH_INVALID_CREDENTIALS, MessageType.ERROR, HttpStatus.UNAUTHORIZED);
     }
     
-   //const otp = randomInt(100000, 1000000).toString();
    const otp = '123456';
     await this.cacheManager.set(`admin_login_${admin.email}`, {
       otp,

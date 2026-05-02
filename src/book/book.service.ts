@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets, Not, In, SelectQueryBuilder } from 'typeorm';
+import { Repository, Brackets, In, SelectQueryBuilder } from 'typeorm';
 import { Book } from './entities/book.entity';
 import { BookImage } from './entities/book-image.entity';
 import { Subject } from 'src/subjects/entities/subject.entity';

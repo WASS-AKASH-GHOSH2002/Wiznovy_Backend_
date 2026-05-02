@@ -515,25 +515,6 @@ async thumbnail(img: string, result: Course) {
     return this.repo.save(result);
   }
 
-  // async deleteCourse(id: string, reason: string) {
-  //   const result = await this.repo.findOne({ where: { id } });
-  //   if (!result) {
-  //     throw new NotFoundException('Course not found!');
-  //   }
-  //   result.status = CourseStatus.DELETED;
-  //   result.deletionReason = reason;
-  //   const updatedCourse = await this.repo.save(result);
-
-  //   await this.notificationsService.create({
-  //     title: 'Course Deleted',
-  //     desc: `Your course "${result.name}" has been deleted. Reason: ${reason}`,
-  //     type: NotificationType.USER_PRODUCT,
-  //     accountId: result.tutorId
-  //   });
-
-  //   return updatedCourse;
-  // }
-
   private async notifyTutorStatusChange(tutorId: string, courseName: string, newStatus: CourseStatus) {
     const statusMessages = {
       [CourseStatus.APPROVED]: 'Your course has been approved and is now live!',

@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, UseGuards, Param, ParseUUIDPipe, Post, UploadedFile, UseInterceptors, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Put, Body, UseGuards, Param, ParseUUIDPipe, UploadedFile, UseInterceptors, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from 'src/auth/decorators/roles.decorator';

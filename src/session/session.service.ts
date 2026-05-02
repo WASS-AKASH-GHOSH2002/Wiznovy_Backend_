@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, ConflictException, ForbiddenException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Session } from './entities/session.entity';
@@ -21,12 +21,11 @@ import { AdminActionLogService } from '../admin-action-log/admin-action-log.serv
 import { SlotLockService } from '../slot-lock/slot-lock.service';
 import { SettingsService } from '../settings/settings.service';
 import { WalletTransaction } from '../wallet-transaction/entities/wallet-transaction.entity';
-
-
 import { CustomException } from '../shared/exceptions/custom.exception';
 import { MessageType } from '../shared/constants/message-type.enum';
 import { MESSAGE_CODES } from '../shared/constants/message-codes';
-import { HttpStatus } from '@nestjs/common';
+
+type CancellationTier = 'early' | 'mid' | 'late';
 
 
 @Injectable()
@@ -374,7 +373,7 @@ export class SessionService {
     hoursUntilSession: number,
     early: number,
     mid: number,
-  ): 'early' | 'mid' | 'late' {
+  ): CancellationTier {
     if (hoursUntilSession >= early) return 'early';
     if (hoursUntilSession >= mid) return 'mid';
     return 'late';
@@ -382,15 +381,15 @@ export class SessionService {
 
   private calculateRefundAmount(
     sessionAmount: number,
-    tier: 'early' | 'mid' | 'late',
+    tier: CancellationTier,
     earlyPercent: number,
     midPercent: number,
     latePercent: number,
   ): number {
-    const percent =
-      tier === 'early' ? earlyPercent :
-      tier === 'mid'   ? midPercent   :
-                         latePercent;
+    let percent: number;
+    if (tier === 'early') percent = earlyPercent;
+    else if (tier === 'mid') percent = midPercent;
+    else percent = latePercent;
     return Math.round((Number(sessionAmount) * Number(percent)) / 100 * 100) / 100;
   }
 
@@ -515,7 +514,7 @@ export class SessionService {
     hoursUntilSession: number,
     earlyThreshold: number,
     midThreshold: number,
-  ): 'early' | 'mid' | 'late' {
+  ): CancellationTier {
     if (hoursUntilSession >= earlyThreshold) return 'early';
     if (hoursUntilSession >= midThreshold) return 'mid';
     return 'late';
@@ -523,15 +522,15 @@ export class SessionService {
 
   private calculateRescheduleFee(
     sessionAmount: number,
-    tier: 'early' | 'mid' | 'late',
+    tier: CancellationTier,
     earlyFeePercent: number,
     midFeePercent: number,
     lateFeePercent: number,
   ): number {
-    const percent =
-      tier === 'early' ? earlyFeePercent :
-      tier === 'mid'   ? midFeePercent   :
-                         lateFeePercent;
+    let percent: number;
+    if (tier === 'early') percent = earlyFeePercent;
+    else if (tier === 'mid') percent = midFeePercent;
+    else percent = lateFeePercent;
     return Math.round((Number(sessionAmount) * Number(percent)) / 100 * 100) / 100;
   }
 
@@ -624,24 +623,25 @@ export class SessionService {
     await this.notificationsService.create({ title: 'Session Rescheduled by Student', desc: `Session rescheduled from ${oldDate} ${oldStartTime} to ${dto.newSessionDate} ${dto.newStartTime}`, type: NotificationType.SESSION_RESCHEDULED, accountId: session.tutorId });
 
     if (user?.email) {
-      const subjectName = session.tutor?.tutorDetail?.[0]?.subject?.name || null;
-      await this.nodeMailerService.sendSessionRescheduleEmail(
-        user.email,
-        user.userDetail?.[0]?.name || 'Student',
-        tutorAccount?.tutorDetail?.[0]?.name || 'Tutor',
-        { date: oldDate as string, startTime: oldStartTime, endTime: oldEndTime },
-        { date: dto.newSessionDate, startTime: dto.newStartTime, endTime: dto.newEndTime },
-        'student',
-        subjectName,
-        process.env.APP_TIMEZONE || 'UTC',
-      );
+      const subjectName = session.tutor?.tutorDetail?.[0]?.subject?.name ?? null;
+      await this.nodeMailerService.sendSessionRescheduleEmail({
+        email: user.email,
+        studentName: user.userDetail?.[0]?.name ?? 'Student',
+        tutorName: tutorAccount?.tutorDetail?.[0]?.name ?? 'Tutor',
+        oldSchedule: { date: oldDate as string, startTime: oldStartTime, endTime: oldEndTime },
+        newSchedule: { date: dto.newSessionDate, startTime: dto.newStartTime, endTime: dto.newEndTime },
+        rescheduledBy: 'student',
+        subject: subjectName,
+        timezone: process.env.APP_TIMEZONE || 'UTC',
+      });
     }
 
+    const feePercent = tier === 'early' ? earlyFeePercent : tier === 'mid' ? midFeePercent : lateFeePercent;
     return {
       message: 'Session rescheduled successfully.',
       tier,
       feeCharged: feeAmount,
-      feePercent: tier === 'early' ? earlyFeePercent : tier === 'mid' ? midFeePercent : lateFeePercent,
+      feePercent,
       rescheduleCount: session.rescheduleCount,
       oldSchedule: { date: oldDate, startTime: oldStartTime, endTime: oldEndTime },
       newSchedule: { date: dto.newSessionDate, startTime: dto.newStartTime, endTime: dto.newEndTime },
@@ -692,9 +692,11 @@ export class SessionService {
 
     const user = await this.accountRepo.findOne({ where: { id: session.userId }, relations: ['userDetail'] });
     const tutorAccount = await this.accountRepo.findOne({ where: { id: session.tutorId }, relations: ['tutorDetail'] });
-    const tutorName = tutorAccount?.tutorDetail?.[0]?.name || 'Your tutor';
+    const tutorName = tutorAccount?.tutorDetail?.[0]?.name ?? 'Your tutor';
     const timezone = process.env.APP_TIMEZONE || 'UTC';
-    const dashboardLink = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/dashboard` : 'https://wiznovy.com/dashboard';
+    const dashboardLink = process.env.FRONTEND_URL
+      ? `${process.env.FRONTEND_URL}/dashboard`
+      : 'https://wiznovy.com/dashboard';
 
     // Notify student
     await this.notificationsService.create({
@@ -712,19 +714,18 @@ export class SessionService {
       accountId: session.tutorId,
     });
 
-    // Email student
     if (user?.email) {
-      const subjectName = session.tutor?.tutorDetail?.[0]?.subject?.name || null;
-      await this.nodeMailerService.sendSessionRescheduleEmail(
-        user.email,
-        user.userDetail?.[0]?.name || 'Student',
+      const subjectName = session.tutor?.tutorDetail?.[0]?.subject?.name ?? null;
+      await this.nodeMailerService.sendSessionRescheduleEmail({
+        email: user.email,
+        studentName: user.userDetail?.[0]?.name ?? 'Student',
         tutorName,
-        { date: oldDate as string, startTime: oldStartTime, endTime: oldEndTime },
-        { date: dto.newSessionDate, startTime: dto.newStartTime, endTime: dto.newEndTime },
-        'tutor',
-        subjectName,
-        process.env.APP_TIMEZONE || 'UTC',
-      );
+        oldSchedule: { date: oldDate as string, startTime: oldStartTime, endTime: oldEndTime },
+        newSchedule: { date: dto.newSessionDate, startTime: dto.newStartTime, endTime: dto.newEndTime },
+        rescheduledBy: 'tutor',
+        subject: subjectName,
+        timezone: process.env.APP_TIMEZONE || 'UTC',
+      });
     }
 
     return {
@@ -803,10 +804,9 @@ export class SessionService {
   }
 
   async getUpcomingSessions(userId: string) {
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
     
-    return await this.sessionRepo.createQueryBuilder('session')
+    return this.sessionRepo.createQueryBuilder('session')
       .leftJoinAndSelect('session.tutor', 'tutor')
       .leftJoinAndSelect('tutor.tutorDetail', 'tutorDetail')
       .where('session.userId = :userId', { userId })
@@ -890,22 +890,14 @@ export class SessionService {
     });
 
     if (user?.email) {
-      await this.nodeMailerService.sendSessionRescheduleEmail(
-        user.email,
-        user.userDetail?.[0]?.name || 'Student',
-        tutorAccount?.tutorDetail?.[0]?.name || 'Tutor',
-        {
-          date: oldDate as string,
-          startTime: oldStartTime,
-          endTime: oldEndTime
-        },
-        {
-          date: dto.newSessionDate,
-          startTime: dto.newStartTime,
-          endTime: dto.newEndTime
-        },
-        'student'
-      );
+      await this.nodeMailerService.sendSessionRescheduleEmail({
+        email: user.email,
+        studentName: user.userDetail?.[0]?.name ?? 'Student',
+        tutorName: tutorAccount?.tutorDetail?.[0]?.name ?? 'Tutor',
+        oldSchedule: { date: oldDate as string, startTime: oldStartTime, endTime: oldEndTime },
+        newSchedule: { date: dto.newSessionDate, startTime: dto.newStartTime, endTime: dto.newEndTime },
+        rescheduledBy: 'student',
+      });
     }
 
     await this.notificationsService.create({
@@ -947,15 +939,7 @@ export class SessionService {
   }
 
   // @Cron('0 */30 * * * *') 
-  // async handleSessionReminders() {
-  //   this.logger.log('Running automatic session reminders cron job');
-  //   try {
-  //     const result = await this.sendSessionReminders();
-  //     this.logger.log(`Session reminders completed: ${result.remindersSent24h} (24h) + ${result.remindersSent1h} (1h) reminders sent`);
-  //   } catch (error) {
-  //     this.logger.error('Error in session reminders cron job:', error);
-  //   }
-  // }
+  // async handleSessionReminders() { ... }
 
   async sendSessionReminders() {
     const now = new Date();
@@ -1135,8 +1119,6 @@ export class SessionService {
     if (dto.date) {
       queryBuilder.andWhere('DATE(session.sessionDate) = :date', { date: dto.date });
     } else {
-      // date range presets
-      const now = new Date();
       if (dto.fromDate && dto.toDate) {
         queryBuilder.andWhere('session.sessionDate BETWEEN :fromDate AND :toDate', { fromDate: dto.fromDate, toDate: dto.toDate });
       } else if (dto.fromDate) {

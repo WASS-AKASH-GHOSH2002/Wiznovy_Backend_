@@ -72,16 +72,19 @@ export function expiredTemplate(itemName: string): string {
   </div>`;
 }
 
-export function zoomLinkReminderTemplate(
-  firstName: string,
-  subject: string,
-  date: string,
-  time: string,
-  timezone: string,
-  zoomLink: string,
-  meetingId: string,
-  passcode: string,
-): string {
+export interface ZoomLinkReminderParams {
+  firstName: string;
+  subject: string;
+  date: string;
+  time: string;
+  timezone: string;
+  zoomLink: string;
+  meetingId: string;
+  passcode: string;
+}
+
+export function zoomLinkReminderTemplate(params: ZoomLinkReminderParams): string {
+  const { firstName, subject, date, time, timezone, zoomLink, meetingId, passcode } = params;
   return `
   <div style="${BASE_STYLE}">
     <div style="${CARD_STYLE}">

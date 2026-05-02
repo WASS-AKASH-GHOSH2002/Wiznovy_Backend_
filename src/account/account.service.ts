@@ -23,7 +23,6 @@ import { UserDetail } from 'src/user-details/entities/user-detail.entity';
 import { DefaultStatusDto } from 'src/common/dto/default-status.dto';
 import * as bcrypt from 'bcrypt';
 import { StaffDetail } from 'src/staff-details/entities/staff-detail.entity';
-import { DefaultStatusPaginationDto } from 'src/common/dto/default-status-pagination.dto';
 import { Menu } from 'src/menus/entities/menu.entity';
 import { TutorDetail } from 'src/tutor-details/entities/tutor-detail.entity';
 import { NodeMailerService } from 'src/node-mailer/node-mailer.service';
@@ -36,7 +35,7 @@ import { WalletTransaction } from 'src/wallet-transaction/entities/wallet-transa
 import { Session } from 'src/session/entities/session.entity';
 import { UserPurchase } from 'src/user-purchase/entities/user-purchase.entity';
 import { LoginHistory } from 'src/login-history/entities/login-history.entity';
-import { buildCsv, CsvColumn, formatCsvDate, generateCsvFileName, sendCsvResponse } from 'src/utils/csv.utils';
+import { buildCsv, CsvColumn, formatCsvDate, generateCsvFileName } from 'src/utils/csv.utils';
 import { ExportStudentsCsvDto, DateRangePreset } from './dto/export-students-csv.dto';
 
 @Injectable()

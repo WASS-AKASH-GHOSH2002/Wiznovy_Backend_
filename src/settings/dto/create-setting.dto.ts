@@ -1,1 +1,3 @@
-export class CreateSettingDto {}
+export class CreateSettingDto {
+  // Placeholder for future settings fields
+}

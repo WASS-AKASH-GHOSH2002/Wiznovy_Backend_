@@ -135,8 +135,8 @@ export class NotificationsController {
   @Get(':id')
   @UseGuards(AuthGuard('jwt'))
   findOne(@Param('id') id: string, @CurrentUser() user: Account) {
-    const numId = parseInt(id, 10);
-    if (isNaN(numId)) throw new NotAcceptableException('Invalid notification id');
+    const numId = Number.parseInt(id, 10);
+    if (Number.isNaN(numId)) throw new NotAcceptableException('Invalid notification id');
     return this.notificationsService.findOne(numId, user.id);
   }
 
@@ -147,16 +147,16 @@ export class NotificationsController {
     @Body('status') status: boolean,
     @CurrentUser() user: Account,
   ) {
-    const numId = parseInt(id, 10);
-    if (isNaN(numId)) throw new NotAcceptableException('Invalid notification id');
+    const numId = Number.parseInt(id, 10);
+    if (Number.isNaN(numId)) throw new NotAcceptableException('Invalid notification id');
     return this.notificationsService.update(numId, user.id, status);
   }
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'))
   deleteNotification(@Param('id') id: string, @CurrentUser() user: Account) {
-    const numId = parseInt(id, 10);
-    if (isNaN(numId)) throw new NotAcceptableException('Invalid notification id');
+    const numId = Number.parseInt(id, 10);
+    if (Number.isNaN(numId)) throw new NotAcceptableException('Invalid notification id');
     return this.notificationsService.deleteNotification(numId, user.id);
   }
   @Get('real-time')

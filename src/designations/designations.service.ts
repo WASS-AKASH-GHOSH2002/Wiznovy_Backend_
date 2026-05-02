@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets, Not, In } from 'typeorm';
+import { Repository, Brackets, In } from 'typeorm';
 import { Designation } from './entities/designation.entity';
 import { CreateDesignationDto, UpdateDesignationDto, DesignationStatusDto, DesignationPaginationDto, BulkDesignationStatusDto } from './dto/create-designation.dto';
 import { DefaultStatus } from 'src/enum';

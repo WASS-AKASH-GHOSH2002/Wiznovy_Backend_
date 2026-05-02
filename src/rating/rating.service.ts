@@ -33,11 +33,16 @@ export class RatingService {
     await this.validateCourseRating(dto, accountId);
     await this.validateSessionRating(dto, accountId);
 
+    let ratingType: RatingType;
+    if (dto.courseId) ratingType = RatingType.COURSE;
+    else if (dto.sessionId) ratingType = RatingType.SESSION;
+    else ratingType = RatingType.TUTOR;
+
     const ratingData = {
       accountId,
       rating: dto.rating,
       comment: dto.comment,
-      type: dto.courseId ? RatingType.COURSE : dto.sessionId ? RatingType.SESSION : RatingType.TUTOR,
+      type: ratingType,
       tutorId: tutorEntity?.accountId || null,
       courseId: dto.courseId || null,
       sessionId: dto.sessionId || null,

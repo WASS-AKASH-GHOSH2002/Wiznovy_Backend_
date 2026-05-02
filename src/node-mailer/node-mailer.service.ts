@@ -646,7 +646,17 @@ export class NodeMailerService {
     }
   }
 
-  async sendSessionRescheduleEmail(email: string, studentName: string, tutorName: string, oldSchedule: { date: string; startTime: string; endTime: string }, newSchedule: { date: string; startTime: string; endTime: string }, rescheduledBy: string, subject?: string, timezone?: string) {
+  async sendSessionRescheduleEmail(dto: {
+    email: string;
+    studentName: string;
+    tutorName: string;
+    oldSchedule: { date: string; startTime: string; endTime: string };
+    newSchedule: { date: string; startTime: string; endTime: string };
+    rescheduledBy: string;
+    subject?: string;
+    timezone?: string;
+  }) {
+    const { email, studentName, oldSchedule, newSchedule, rescheduledBy, subject, timezone } = dto;
     try {
       const subjectLine = rescheduledBy === 'tutor' ? 'Session rescheduled successfully' : 'Session Rescheduled - Wiznovy';
       const timezone_ = timezone || process.env.APP_TIMEZONE || 'UTC';

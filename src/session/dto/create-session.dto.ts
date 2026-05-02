@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString, IsUUID, IsOptional, IsDateString, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { SessionType, SessionDurationType, SessionStatus } from '../../enum';
+import { SessionType, SessionStatus } from '../../enum';
 
 export class CreateSessionDto {
   @ApiPropertyOptional({ description: 'User ID (required for admin manual creation)' })
